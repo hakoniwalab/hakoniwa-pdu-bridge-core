@@ -1,0 +1,51 @@
+{
+  "version": "2.0.0",
+
+  "transferPolicies": {
+    "immediate": { "type": "immediate" },
+    "throttle1": { "type": "throttle", "intervalMs": 10 },
+    "throttle2": { "type": "throttle", "intervalMs": 5 },
+    "ticker1": { "type": "ticker", "intervalMs": 100 },
+    "ticker2": { "type": "ticker", "intervalMs": 500 }
+  },
+
+  "nodes": [
+    { "id": "node1" }
+  ],
+
+  "endpoints": [
+    {
+      "nodeId": "node1",
+      "endpoints": [
+        { "id": "n1-epSrc", "mode": "local", "direction": "in" },
+        { "id": "n1-epDst", "mode": "local", "direction": "out" }
+      ]
+    }
+  ],
+  "wireLinks": [
+  ],
+  "pduKeyGroups": {
+    "pdu_group1": [
+      { "id": "Drone.pos", "robot_name": "Drone", "pdu_name": "pos" },
+      { "id": "Drone.motor",  "robot_name": "Drone", "pdu_name": "motor" }
+    ],
+    "pdu_group2": [
+      { "id": "Drone.hako_camera_data", "robot_name": "Drone", "pdu_name": "hako_camera_data" }
+    ]
+  },
+
+  "connections": [
+    {
+      "id": "conn1",
+      "nodeId": "node1",
+      "source": { "endpointId": "n1-epSrc" },
+      "destinations": [
+        { "endpointId": "n1-epDst" }
+      ],
+      "transferPdus": [
+        { "pduKeyGroupId": "pdu_group1", "policyId": "immediate" },
+        { "pduKeyGroupId": "pdu_group2", "policyId": "throttle1" }
+      ]
+    }
+  ]
+}
