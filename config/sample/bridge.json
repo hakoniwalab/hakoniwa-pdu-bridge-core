@@ -11,7 +11,8 @@
 
   "nodes": [
     { "id": "node1" },
-    { "id": "node2" }
+    { "id": "node2" },
+    { "id": "node3" }
   ],
 
   "endpoints": [
@@ -19,7 +20,8 @@
       "nodeId": "node1",
       "endpoints": [
         { "id": "n1-epSrc", "mode": "local" },
-        { "id": "n1-epDst", "mode": "wire" }
+        { "id": "n1-epDst-1", "mode": "wire" },
+        { "id": "n1-epDst-2", "mode": "wire" }
       ]
     },
     {
@@ -28,10 +30,18 @@
         { "id": "n2-epSrc", "mode": "wire" },
         { "id": "n2-epDst", "mode": "local" }
       ]
+    },
+    {
+      "nodeId": "node3",
+      "endpoints": [
+        { "id": "n3-epSrc", "mode": "wire" },
+        { "id": "n3-epDst", "mode": "local" }
+      ]
     }
   ],
   "wireLinks": [
-    { "from": "n1-epDst", "to": "n2-epSrc" }
+    { "from": "n1-epDst-1", "to": "n2-epSrc" },
+    { "from": "n1-epDst-2", "to": "n3-epSrc" }
   ],
   "pduKeyGroups": {
     "pdu_group1": [
@@ -50,7 +60,10 @@
       "id": "conn1",
       "nodeId": "node1",
       "source": { "endpointId": "n1-epSrc" },
-      "destinations": [{ "endpointId": "n1-epDst" }],
+      "destinations": [
+        { "endpointId": "n1-epDst-1" },
+        { "endpointId": "n1-epDst-2" }
+      ],
       "transferPdus": [
         { "pduKeyGroupId": "pdu_group1", "policyId": "immediate" },
         { "pduKeyGroupId": "pdu_group2", "policyId": "throttle1" }
@@ -64,6 +77,15 @@
       "transferPdus": [
         { "pduKeyGroupId": "pdu_group1", "policyId": "immediate" },
         { "pduKeyGroupId": "pdu_group2", "policyId": "immediate" }
+      ]
+    },
+    {
+      "id": "conn3",
+      "nodeId": "node3",
+      "source": { "endpointId": "n3-epSrc" },
+      "destinations": [{ "endpointId": "n3-epDst" }],
+      "transferPdus": [
+        { "pduKeyGroupId": "pdu_group1", "policyId": "ticker1" }
       ]
     }
   ]
