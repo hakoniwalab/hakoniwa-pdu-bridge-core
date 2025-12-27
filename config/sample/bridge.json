@@ -1,0 +1,70 @@
+{
+  "version": "2.0.0",
+
+  "transferPolicies": {
+    "immediate": { "type": "immediate" },
+    "throttle1": { "type": "throttle", "intervalMs": 10 },
+    "throttle2": { "type": "throttle", "intervalMs": 5 },
+    "ticker1": { "type": "ticker", "intervalMs": 100 },
+    "ticker2": { "type": "ticker", "intervalMs": 500 }
+  },
+
+  "nodes": [
+    { "id": "node1" },
+    { "id": "node2" }
+  ],
+
+  "endpoints": [
+    {
+      "nodeId": "node1",
+      "endpoints": [
+        { "id": "n1-epSrc", "mode": "local" },
+        { "id": "n1-epDst", "mode": "wire" }
+      ]
+    },
+    {
+      "nodeId": "node2",
+      "endpoints": [
+        { "id": "n2-epSrc", "mode": "wire" },
+        { "id": "n2-epDst", "mode": "local" }
+      ]
+    }
+  ],
+  "wireLinks": [
+    { "from": "n1-epDst", "to": "n2-epSrc" }
+  ],
+  "pduKeyGroups": {
+    "pdu_group1": [
+      { "id": "Robot1.camera", "robot_name": "Robot1", "pdu_name": "camera" },
+      { "id": "Robot1.lidar",  "robot_name": "Robot1", "pdu_name": "lidar" },
+      { "id": "Robot2.gps",    "robot_name": "Robot2", "pdu_name": "gps" },
+      { "id": "Robot2.imu",    "robot_name": "Robot2", "pdu_name": "imu" }
+    ],
+    "pdu_group2": [
+      { "id": "Robot2.camera", "robot_name": "Robot2", "pdu_name": "camera" }
+    ]
+  },
+
+  "connections": [
+    {
+      "id": "conn1",
+      "nodeId": "node1",
+      "source": { "endpointId": "n1-epSrc" },
+      "destinations": [{ "endpointId": "n1-epDst" }],
+      "transferPdus": [
+        { "pduKeyGroupId": "pdu_group1", "policyId": "immediate" },
+        { "pduKeyGroupId": "pdu_group2", "policyId": "throttle1" }
+      ]
+    },
+    {
+      "id": "conn2",
+      "nodeId": "node2",
+      "source": { "endpointId": "n2-epSrc" },
+      "destinations": [{ "endpointId": "n2-epDst" }],
+      "transferPdus": [
+        { "pduKeyGroupId": "pdu_group1", "policyId": "immediate" },
+        { "pduKeyGroupId": "pdu_group2", "policyId": "immediate" }
+      ]
+    }
+  ]
+}

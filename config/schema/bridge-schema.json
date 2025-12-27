@@ -1,0 +1,216 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hakoniwa-lab.net/schemas/hakoniwa-pdu-bridge-config-2.0.0.schema.json",
+  "title": "Hakoniwa PDU Bridge Config",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "transferPolicies",
+    "nodes",
+    "endpoints",
+    "wireLinks",
+    "pduKeyGroups",
+    "connections"
+  ],
+
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "2.0.0"
+    },
+
+    "transferPolicies": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "description": "Policy instances. Keys are policy IDs (e.g., 'immediate', 'throttle1'). transferPdus[].policyId must reference one of these keys.",
+      "patternProperties": {
+        "^[A-Za-z][A-Za-z0-9_\\-]*$": { "$ref": "#/$defs/transferPolicy" }
+      }
+    },
+
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/node" },
+      "uniqueItems": true
+    },
+
+    "endpoints": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/nodeEndpoints" },
+      "description": "Endpoint groups per node. Endpoint IDs should be globally unique across all nodes (recommended)."
+    },
+
+    "wireLinks": {
+      "type": "array",
+      "minItems": 0,
+      "items": { "$ref": "#/$defs/wireLink" },
+      "description": "Links between wire endpoints. from/to must point to endpoints whose mode is 'wire' (enforced by additional validation outside JSON Schema if needed)."
+    },
+
+    "pduKeyGroups": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "description": "Group ID -> list of PDU keys. transferPdus[].pduKeyGroupId must reference one of these keys.",
+      "patternProperties": {
+        "^[A-Za-z][A-Za-z0-9_\\-]*$": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/pduKey" }
+        }
+      }
+    },
+
+    "connections": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/connection" }
+    }
+  },
+
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z][A-Za-z0-9_\\-\\.]*$"
+    },
+
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" }
+      }
+    },
+
+    "endpointMode": {
+      "type": "string",
+      "enum": ["local", "wire"]
+    },
+
+    "endpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "mode"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "mode": { "$ref": "#/$defs/endpointMode" }
+      }
+    },
+
+    "nodeEndpoints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nodeId", "endpoints"],
+      "properties": {
+        "nodeId": { "$ref": "#/$defs/id" },
+        "endpoints": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/endpoint" }
+        }
+      }
+    },
+
+    "wireLink": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "to"],
+      "properties": {
+        "from": { "$ref": "#/$defs/id" },
+        "to": { "$ref": "#/$defs/id" }
+      }
+    },
+
+    "pduKey": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "robot_name", "pdu_name"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id",
+          "description": "Globally unique key identifier (recommended), e.g. 'Robot2.camera'."
+        },
+        "robot_name": { "type": "string", "minLength": 1 },
+        "pdu_name": { "type": "string", "minLength": 1 }
+      }
+    },
+
+    "transferPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["immediate", "throttle", "ticker"]
+        },
+        "intervalMs": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Required for throttle/ticker. Ignored for immediate."
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "immediate" } } },
+          "then": { "not": { "required": ["intervalMs"] } }
+        },
+        {
+          "if": {
+            "properties": { "type": { "enum": ["throttle", "ticker"] } }
+          },
+          "then": { "required": ["intervalMs"] }
+        }
+      ]
+    },
+
+    "endpointRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["endpointId"],
+      "properties": {
+        "endpointId": { "$ref": "#/$defs/id" }
+      },
+      "description": "Reference to an endpoint by ID. Must exist in endpoints[].endpoints[].id (enforced by additional validation outside JSON Schema if needed)."
+    },
+
+    "transferPdu": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pduKeyGroupId", "policyId"],
+      "properties": {
+        "pduKeyGroupId": { "$ref": "#/$defs/id" },
+        "policyId": { "$ref": "#/$defs/id" }
+      },
+      "description": "pduKeyGroupId must exist in pduKeyGroups. policyId must exist in transferPolicies."
+    },
+
+    "connection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "nodeId", "source", "destinations", "transferPdus"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "nodeId": { "$ref": "#/$defs/id" },
+        "source": { "$ref": "#/$defs/endpointRef" },
+        "destinations": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/endpointRef" }
+        },
+        "transferPdus": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/transferPdu" }
+        }
+      },
+      "description": "nodeId must exist in nodes. source/destinations must belong to nodeId's endpoints (recommended invariant; can be validated by a loader)."
+    }
+  }
+}
