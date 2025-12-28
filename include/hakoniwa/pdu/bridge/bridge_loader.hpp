@@ -12,6 +12,7 @@ namespace hako::pdu::bridge {
 
 class BridgeLoader {
 public:
+    static BridgeConfig load_config(const std::string& config_file_path);
     // Loads the config from a file, uses the provided endpoints and PDU definitions,
     // and returns a fully constructed BridgeCore for the specified node.
     static std::unique_ptr<BridgeCore> load(

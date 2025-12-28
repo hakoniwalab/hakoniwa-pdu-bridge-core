@@ -28,6 +28,10 @@ namespace hako::pdu::bridge {
         return j.get<BridgeConfig>();
     }
 
+    BridgeConfig BridgeLoader::load_config(const std::string& config_file_path)
+    {
+        return parse_bridge_config_from_file(config_file_path);
+    }
 
     std::unique_ptr<BridgeCore> BridgeLoader::create_bridge_from_config_file(
         const std::string& config_file_path,
@@ -142,4 +146,4 @@ namespace hako::pdu::bridge {
         return core;
     }
 
-} // namespace hako::pdu::bridge
+}
