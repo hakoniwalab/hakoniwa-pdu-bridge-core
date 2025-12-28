@@ -1,8 +1,9 @@
 #pragma once
 
 #include "hakoniwa/pdu/bridge/pdu_transfer_policy.hpp"
-#include <memory> // For std::shared_ptr
+#include <atomic>
 #include <chrono>
+#include <memory> // For std::shared_ptr
 
 namespace hako::pdu::bridge {
 
@@ -16,6 +17,7 @@ public:
 private:
     uint64_t interval_micros_;
     std::atomic<uint64_t> last_transfer_time_micros_;
+    std::atomic<bool> has_transferred_;
 };
 
 } // namespace hako::pdu::bridge
