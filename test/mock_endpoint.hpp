@@ -39,7 +39,7 @@ public:
 
     HakoPduErrorType recv(const hakoniwa::pdu::PduKey& key,
                           std::span<std::byte> buffer,
-                          size_t& received_size) override {
+                          size_t& received_size) noexcept override {
         std::lock_guard<std::mutex> lock(mutex_);
         const std::string map_key = make_key(key);
         auto it = pdu_data_.find(map_key);
@@ -53,7 +53,7 @@ public:
     }
 
     HakoPduErrorType send(const hakoniwa::pdu::PduKey& key,
-                          std::span<const std::byte> buffer) override {
+                          std::span<const std::byte> buffer) noexcept override {
         std::lock_guard<std::mutex> lock(mutex_);
         const std::string map_key = make_key(key);
         last_sent_data_[map_key] = std::vector<std::byte>(buffer.begin(), buffer.end());
@@ -81,7 +81,7 @@ public:
         return it->second;
     }
 
-    const std::string& get_name() const override {
+    const std::string& get_name() const {
         return name_;
     }
 

@@ -3,19 +3,19 @@
 
 namespace hako::pdu::bridge {
 
-ThrottlePolicy::ThrottlePolicy(std::chrono::milliseconds interval)
-    : interval_(interval), last_transfer_time_(std::chrono::steady_clock::time_point::min()) {}
+ThrottlePolicy::ThrottlePolicy(uint64_t interval_microseconds)
+    : interval_micros_(interval_microseconds), last_transfer_time_micros_(0) {}
 
 bool ThrottlePolicy::should_transfer(const std::shared_ptr<ITimeSource>& time_source) {
-    std::chrono::steady_clock::time_point now = time_source->get_steady_clock_time();
-    if ((now - last_transfer_time_) >= interval_) {
+    uint64_t now = time_source->get_microseconds();
+    if ((now - last_transfer_time_micros_.load()) >= interval_micros_) {
         return true;
     }
     return false;
 }
 
 void ThrottlePolicy::on_transferred(const std::shared_ptr<ITimeSource>& time_source) {
-    last_transfer_time_ = time_source->get_steady_clock_time();
+    last_transfer_time_micros_ = time_source->get_microseconds();
 }
 
 } // namespace hako::pdu::bridge

@@ -1,3 +1,5 @@
+find_package(GTest REQUIRED)
+
 set(TEST_SOURCES
     bridge_loader_test.cpp
     transfer_pdu_test.cpp
@@ -20,7 +22,7 @@ target_compile_definitions(hakoniwa_pdu_bridge_tests
 target_link_libraries(hakoniwa_pdu_bridge_tests
     PRIVATE
         hakoniwa_pdu_bridge_lib
-        gtest_main
+        GTest::gtest_main
 )
 
 add_test(NAME hakoniwa_pdu_bridge_tests COMMAND hakoniwa_pdu_bridge_tests)

@@ -172,7 +172,7 @@ TEST(BridgeLoaderTest, LoadsMultipleConfig) {
 }
 
 TEST(BridgeLoaderTest, LoadsInvalidConfig) {
-    ASSERT_THROW(BridgeLoader::load_config(config_path("bridge-invalid.json")), std::runtime_error);
+    ASSERT_THROW(BridgeLoader::load_config(config_path("bridge-invalid.json")), nlohmann::json::out_of_range);
 }
 
 } // namespace hako::pdu::bridge::test

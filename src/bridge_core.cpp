@@ -27,7 +27,9 @@ void BridgeCore::run() {
         // auto now = time_source_->get_steady_clock_time(); // Not used directly here anymore.
 
         for (auto& connection : connections_) {
-            connection->step(time_source_); // Pass the shared_ptr to ITimeSource
+            if (connection->getNodeId() == node_name_) {
+                connection->step(time_source_);
+            }
         }
 
         // The sleep duration determines the resolution of the bridge.

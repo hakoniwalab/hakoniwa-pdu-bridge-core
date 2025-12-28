@@ -68,7 +68,7 @@ TEST(TransferPduTest, ImmediatePolicyRejectsOlderEpoch) {
 
 TEST(TransferPduTest, ThrottlePolicyTransfersOnInterval) {
     auto time_source = std::make_shared<VirtualTimeSource>();
-    auto policy = std::make_shared<ThrottlePolicy>(std::chrono::milliseconds(100));
+    auto policy = std::make_shared<ThrottlePolicy>(100000); // 100ms
     auto src = std::make_shared<test_support::MockEndpoint>("src");
     auto dst = std::make_shared<test_support::MockEndpoint>("dst");
 
@@ -82,11 +82,11 @@ TEST(TransferPduTest, ThrottlePolicyTransfersOnInterval) {
     transfer_pdu.try_transfer(time_source);
     EXPECT_EQ(dst->send_count(make_endpoint_key("Robot1", "pos")), 1U);
 
-    time_source->advance_time(50'000U);
+    time_source->advance_time(50000);
     transfer_pdu.try_transfer(time_source);
     EXPECT_EQ(dst->send_count(make_endpoint_key("Robot1", "pos")), 1U);
 
-    time_source->advance_time(50'000U);
+    time_source->advance_time(50000);
     transfer_pdu.try_transfer(time_source);
     EXPECT_EQ(dst->send_count(make_endpoint_key("Robot1", "pos")), 2U);
 }

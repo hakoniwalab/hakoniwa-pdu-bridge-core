@@ -101,10 +101,10 @@ namespace hako::pdu::bridge {
                 policy_map[id] = std::make_shared<ImmediatePolicy>();
             } else if (policy_def.type == "throttle") {
                 if (!policy_def.intervalMs) throw std::runtime_error("throttle policy needs intervalMs");
-                policy_map[id] = std::make_shared<ThrottlePolicy>(std::chrono::milliseconds(*policy_def.intervalMs));
+                policy_map[id] = std::make_shared<ThrottlePolicy>(static_cast<uint64_t>(*policy_def.intervalMs) * 1000); // Convert to microseconds
             } else if (policy_def.type == "ticker") {
                 if (!policy_def.intervalMs) throw std::runtime_error("ticker policy needs intervalMs");
-                policy_map[id] = std::make_shared<TickerPolicy>(std::chrono::milliseconds(*policy_def.intervalMs));
+                policy_map[id] = std::make_shared<TickerPolicy>(static_cast<uint64_t>(*policy_def.intervalMs) * 1000); // Convert to microseconds
             }
         }
 
