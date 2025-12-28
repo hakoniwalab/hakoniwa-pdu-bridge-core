@@ -116,4 +116,16 @@ TEST(TransferPduTest, TickerPolicyTransfersOnTicks) {
     EXPECT_EQ(dst->send_count(make_endpoint_key("Robot1", "pos")), 2U);
 }
 
+TEST(TransferPduTest, ImmediatePolicyNoPdu) {
+    auto time_source = std::make_shared<VirtualTimeSource>();
+    auto policy = std::make_shared<ImmediatePolicy>();
+    auto src = std::make_shared<test_support::MockEndpoint>("src");
+    auto dst = std::make_shared<test_support::MockEndpoint>("dst");
+
+    TransferPdu transfer_pdu(make_config_key(), policy, src, dst);
+    transfer_pdu.try_transfer(time_source);
+
+    EXPECT_EQ(dst->send_count(make_endpoint_key("Robot1", "pos")), 0U);
+}
+
 } // namespace hako::pdu::bridge::test

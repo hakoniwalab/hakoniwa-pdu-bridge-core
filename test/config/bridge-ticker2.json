@@ -1,0 +1,41 @@
+{
+    "version": "2.0.0",
+    "time_source_type": "virtual",
+    "time_source_config": {
+        "msec": 10
+    },
+    "transferPolicies": {
+      "ticker1": { "type": "ticker", "intervalTicks": 5, "priority": 1 }
+    },
+    "nodes": [
+      { "id": "node1" }
+    ],
+    "endpoints": [
+      {
+        "nodeId": "node1",
+        "endpoints": [
+          { "id": "ep1", "mode": "local", "config_path": "../loader/dummy_endpoint.json" },
+          { "id": "ep2", "mode": "local", "config_path": "../loader/dummy_endpoint.json" }
+        ]
+      }
+    ],
+    "connections": [
+      {
+        "id": "conn1",
+        "nodeId": "node1",
+        "source": { "endpointId": "ep1" },
+        "destinations": [ { "endpointId": "ep2" } ],
+        "transferPdus": [
+          { 
+            "pduKeyGroupId": "pdu_group1", 
+            "policyId": "ticker1" 
+          }
+        ]
+      }
+    ],
+    "pduKeyGroups": {
+        "pdu_group1": [
+          { "id": "Robot1.camera", "robot_name": "Robot1", "pdu_name": "camera" }
+        ]
+    }
+  }

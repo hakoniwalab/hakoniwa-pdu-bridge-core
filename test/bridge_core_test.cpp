@@ -66,4 +66,29 @@ TEST(BridgeCoreTest, RunLoopStepsMultipleConnections) {
     EXPECT_GT(dst2->send_count(make_endpoint_key("Robot1", "status")), 0U);
 }
 
+TEST(BridgeCoreTest, RunLoopIgnoresMismatchedNodeIds) {
+    auto time_source = std::make_shared<VirtualTimeSource>();
+    BridgeCore core("node1", time_source);
+
+    auto src1 = std::make_shared<test_support::MockEndpoint>("src1");
+    auto dst1 = std::make_shared<test_support::MockEndpoint>("dst1");
+    src1->set_pdu_data(make_endpoint_key("Robot1", "pos"), make_payload(1U, 16U));
+
+    auto src2 = std::make_shared<test_support::MockEndpoint>("src2");
+    auto dst2 = std::make_shared<test_support::MockEndpoint>("dst2");
+    src2->set_pdu_data(make_endpoint_key("Robot1", "status"), make_payload(1U, 16U));
+
+    core.add_connection(make_connection("node1", src1, dst1, "pos"));
+    core.add_connection(make_connection("node2", src2, dst2, "status"));
+
+    std::thread runner([&core]() { core.run(); });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    core.stop();
+    runner.join();
+
+    EXPECT_GT(dst1->send_count(make_endpoint_key("Robot1", "pos")), 0U);
+    EXPECT_EQ(dst2->send_count(make_endpoint_key("Robot1", "status")), 0U);
+}
+
 } // namespace hako::pdu::bridge::test
