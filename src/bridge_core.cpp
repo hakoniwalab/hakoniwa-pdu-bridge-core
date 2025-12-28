@@ -24,7 +24,6 @@ void BridgeCore::run() {
 
     while (is_running_) {
         // Get time from the abstract time source
-        // auto now = time_source_->get_steady_clock_time(); // Not used directly here anymore.
 
         for (auto& connection : connections_) {
             if (connection->getNodeId() == node_name_) {

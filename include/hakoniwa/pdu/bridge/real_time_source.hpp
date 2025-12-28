@@ -9,9 +9,6 @@ public:
     RealTimeSource()
       : start_us_(now_us()) {}
 
-    uint64_t get_steady_clock_time() const override {
-        return now_us(); // “絶対us”(steady epoch基準)
-    }
 
     uint64_t get_microseconds() const override {
         return now_us() - start_us_; // “起点からの経過us”

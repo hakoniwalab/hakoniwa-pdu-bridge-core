@@ -9,12 +9,6 @@ class VirtualTimeSource : public ITimeSource {
 public:
     VirtualTimeSource() : current_time_micros_(0) {}
 
-    virtual uint64_t get_steady_clock_time() const override {
-        // For virtual time, we can map microseconds to a steady_clock::time_point
-        // The epoch of steady_clock is unspecified, so this is mainly for consistent type usage.
-        return current_time_micros_.load();
-    }
-
     virtual uint64_t get_microseconds() const override {
         return current_time_micros_.load();
     }
