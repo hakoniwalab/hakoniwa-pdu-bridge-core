@@ -106,3 +106,13 @@ config/schema/bridge-config.schema.json を参照
 * 「C++20、エラーハンドリングは HakoPduErrorType（または例外禁止）」
 * 「まずは動く最小を作り、その後拡張」
 
+# リファクタリングメモ
+
+- Endpointのコンフィグ定義ファイルパスが同じものを指す場合、同一インスタンスを共有するようにする
+- IPduTransferPolicy/BridgeConnectionのメソッドに渡す時間は、実時間のケースと、仮想時間のケースがあるので、インタフェース見直したい。
+  - 仮想時間の場合は、箱庭時刻がusec単位で渡される
+  - 実時間の場合は、起動時点からの経過時間がusec単位で渡される
+- そういう意味で、現在時刻の取得ポイントは抽象化したAPIにして、Bridgeコンフィグで切り替えられるようにしたい
+- TransferPduのポインタ参照はスマートポインタ(shared_ptr)に変更する
+- TransferPduのpdu_definitionは不要では？エンドポイントでresovle用のAPI(channel_id や pdu_sizeを取得できるので)
+- BridgeCoreのrunループは、将来的にマルチスレッド化したい（品質安定したら）
