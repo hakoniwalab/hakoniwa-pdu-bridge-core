@@ -41,5 +41,5 @@ target_link_libraries(hakoniwa-pdu-bridge PRIVATE hakoniwa_pdu_bridge_lib)
 enable_testing()
 
 # Add our test subdirectory
-#add_subdirectory(test)
+add_subdirectory(test)
 
