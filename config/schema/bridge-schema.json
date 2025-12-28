@@ -6,6 +6,7 @@
   "additionalProperties": false,
   "required": [
     "version",
+    "time_source_type",
     "transferPolicies",
     "nodes",
     "endpoints",
@@ -18,6 +19,11 @@
     "version": {
       "type": "string",
       "const": "2.0.0"
+    },
+    "time_source_type": {
+      "type": "string",
+      "enum": ["real", "virtual"],
+      "description": "Specifies the type of time source to use: 'real' for system time, 'virtual' for simulated time."
     },
 
     "transferPolicies": {
@@ -96,10 +102,11 @@
     "endpoint": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "mode"],
+      "required": ["id", "mode", "config_path"],
       "properties": {
         "id": { "$ref": "#/$defs/id" },
-        "mode": { "$ref": "#/$defs/endpointMode" }
+        "mode": { "$ref": "#/$defs/endpointMode" },
+        "config_path": { "type": "string", "minLength": 1, "description": "Path to the endpoint's JSON configuration file." }
       }
     },
 

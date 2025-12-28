@@ -3,6 +3,10 @@
 #include "hakoniwa/pdu/bridge/policy/immediate_policy.hpp"
 #include "hakoniwa/pdu/bridge/policy/throttle_policy.hpp"
 #include "hakoniwa/pdu/bridge/policy/ticker_policy.hpp"
+#include "hakoniwa/pdu/bridge/real_time_source.hpp"    // For RealTimeSource
+#include "hakoniwa/pdu/bridge/virtual_time_source.hpp" // For VirtualTimeSource
+#include "hakoniwa/pdu/endpoint.hpp"          // Actual Endpoint class
+#include "hakoniwa/pdu/pdu_definition.hpp"    // For PduDefinition
 
 #include <nlohmann/json.hpp> // nlohmann/json
 
@@ -13,80 +17,76 @@ namespace hako::pdu::bridge {
 
     using json = nlohmann::json;
 
-    // JSON parsing helpers for BridgeConfig DTOs
-    void from_json(const json& j, TransferPolicy& p) {
-        j.at("type").get_to(p.type);
-        if (j.contains("intervalMs")) {
-            p.intervalMs = j.at("intervalMs").get<int>();
-        }
-    }
-    void from_json(const json& j, Node& n) {
-        j.at("id").get_to(n.id);
-    }
-    void from_json(const json& j, EndpointDefinition& e) {
-        j.at("id").get_to(e.id);
-        j.at("mode").get_to(e.mode);
-    }
-    void from_json(const json& j, NodeEndpoints& n) {
-        j.at("nodeId").get_to(n.nodeId);
-        j.at("endpoints").get_to(n.endpoints);
-    }
-    void from_json(const json& j, WireLink& w) {
-        j.at("from").get_to(w.from);
-        j.at("to").get_to(w.to);
-    }
-    void from_json(const json& j, PduKey& p) {
-        j.at("id").get_to(p.id);
-        j.at("robot_name").get_to(p.robot_name);
-        j.at("pdu_name").get_to(p.pdu_name);
-    }
-    void from_json(const json& j, ConnectionSource& s) {
-        j.at("endpointId").get_to(s.endpointId);
-    }
-    void from_json(const json& j, ConnectionDestination& d) {
-        j.at("endpointId").get_to(d.endpointId);
-    }
-    void from_json(const json& j, TransferPduConfig& t) {
-        j.at("pduKeyGroupId").get_to(t.pduKeyGroupId);
-        j.at("policyId").get_to(t.policyId);
-    }
-    void from_json(const json& j, Connection& c) {
-        j.at("id").get_to(c.id);
-        j.at("nodeId").get_to(c.nodeId);
-        j.at("source").get_to(c.source);
-        j.at("destinations").get_to(c.destinations);
-        j.at("transferPdus").get_to(c.transferPdus);
-    }
-    void from_json(const json& j, BridgeConfig& b) {
-        j.at("version").get_to(b.version);
-        j.at("transferPolicies").get_to(b.transferPolicies);
-        j.at("nodes").get_to(b.nodes);
-        j.at("endpoints").get_to(b.endpoints);
-        if (j.contains("wireLinks")) {
-            j.at("wireLinks").get_to(b.wireLinks);
-        }
-        j.at("pduKeyGroups").get_to(b.pduKeyGroups);
-        j.at("connections").get_to(b.connections);
-    }
-
-    static BridgeConfig parse_config_from_file(const std::string& config_path) {
+    // Helper to parse BridgeConfig from file
+    static BridgeConfig parse_bridge_config_from_file(const std::string& config_path) {
         std::ifstream ifs(config_path);
         if (!ifs.is_open()) {
-            throw std::runtime_error("BridgeLoader: Failed to open config file: " + config_path);
+            throw std::runtime_error("BridgeLoader: Failed to open bridge config file: " + config_path);
         }
-        json j;
+        nlohmann::json j;
         ifs >> j;
         return j.get<BridgeConfig>();
     }
 
+
+    std::unique_ptr<BridgeCore> BridgeLoader::create_bridge_from_config_file(
+        const std::string& config_file_path,
+        const std::string& node_name)
+    {
+        // 1. Load BridgeConfig
+        auto bridge_config = parse_bridge_config_from_file(config_file_path);
+
+        // 2. Prepare PDU definitions (mocked for now)
+        std::map<std::string, std::shared_ptr<hakoniwa::pdu::PduDefinition>> pdu_definitions_map;
+        auto pdu_def_node = std::make_shared<hakoniwa::pdu::PduDefinition>();
+        // Populate with example data if necessary
+        pdu_def_node->pdu_definitions_["Drone"]["pos"] = {"sensor_msgs/Twist", "pos", "pos", 1, 32, "shm"};
+        pdu_def_node->pdu_definitions_["Drone"]["motor"] = {"std_msgs/Float64", "motor", "motor", 2, 16, "shm"};
+        pdu_def_node->pdu_definitions_["Drone"]["hako_camera_data"] = {"sensor_msgs/Image", "hako_camera_data", "hako_camera_data", 3, 65536, "shm"};
+        pdu_definitions_map[node_name] = pdu_def_node;
+
+        // 3. Create and cache Endpoint instances
+        std::map<std::string, std::shared_ptr<hakoniwa::pdu::Endpoint>> shared_endpoints_by_path;
+        std::map<std::string, std::shared_ptr<hakoniwa::pdu::Endpoint>> named_endpoints_by_id;
+
+        for (const auto& node_eps : bridge_config.endpoints) {
+            if (node_eps.nodeId == node_name) {
+                for (const auto& ep_def : node_eps.endpoints) {
+                    if (shared_endpoints_by_path.find(ep_def.config_path) == shared_endpoints_by_path.end()) {
+                        auto endpoint = std::make_shared<hakoniwa::pdu::Endpoint>(ep_def.id, HAKO_PDU_ENDPOINT_DIRECTION_INOUT);
+                        HakoPduErrorType err = endpoint->open(ep_def.config_path);
+                        if (err != HAKO_PDU_ERR_OK) {
+                            throw std::runtime_error("BridgeLoader: Failed to open endpoint config " + ep_def.config_path + ": " + std::to_string(err));
+                        }
+                        shared_endpoints_by_path[ep_def.config_path] = endpoint;
+                    }
+                    named_endpoints_by_id[ep_def.id] = shared_endpoints_by_path[ep_def.config_path];
+                }
+            }
+        }
+
+        // 4. Load the bridge core using the low-level load function
+        return BridgeLoader::load(bridge_config, node_name, named_endpoints_by_id, pdu_definitions_map);
+    }
+
+
     std::unique_ptr<BridgeCore> BridgeLoader::load(
-        const std::string& config_path,
+        const BridgeConfig& config, // Now takes BridgeConfig directly
         const std::string& node_name,
         const std::map<std::string, std::shared_ptr<hakoniwa::pdu::Endpoint>>& endpoints,
         const std::map<std::string, std::shared_ptr<hakoniwa::pdu::PduDefinition>>& pdu_definitions)
     {
-        auto config = parse_config_from_file(config_path);
-        auto core = std::make_unique<BridgeCore>(node_name);
+        // Instantiate the time source
+        std::shared_ptr<ITimeSource> time_source;
+        if (config.time_source_type == "real") {
+            time_source = std::make_shared<RealTimeSource>();
+        } else if (config.time_source_type == "virtual") {
+            time_source = std::make_shared<VirtualTimeSource>();
+        } else {
+            throw std::runtime_error("Unknown time_source_type: " + config.time_source_type);
+        }
+
+        auto core = std::make_unique<BridgeCore>(node_name, time_source); // Pass time_source to BridgeCore
 
         // 1. Instantiate policies
         std::map<std::string, std::shared_ptr<IPduTransferPolicy>> policy_map;
@@ -113,23 +113,25 @@ namespace hako::pdu::bridge {
             
             auto src_ep_it = endpoints.find(conn_def.source.endpointId);
             if (src_ep_it == endpoints.end()) throw std::runtime_error("Source endpoint not found: " + conn_def.source.endpointId);
-            auto* src_ep = src_ep_it->second.get();
+            std::shared_ptr<hakoniwa::pdu::Endpoint> src_ep = src_ep_it->second;
             
-            auto pdu_def_it = pdu_definitions.find(conn_def.nodeId);
-             if (pdu_def_it == pdu_definitions.end()) throw std::runtime_error("PduDefinition not found for node: " + conn_def.nodeId);
-            auto* pdu_def = pdu_def_it->second.get();
+            // PduDefinition is no longer passed to TransferPdu directly.
+            // It's expected to be managed by the Endpoint itself.
+            // auto pdu_def_it = pdu_definitions.find(conn_def.nodeId);
+            // if (pdu_def_it == pdu_definitions.end()) throw std::runtime_error("PduDefinition not found for node: " + conn_def.nodeId);
+            // std::shared_ptr<hakoniwa::pdu::PduDefinition> pdu_def = pdu_def_it->second;
 
             for (const auto& dest_def : conn_def.destinations) {
                 auto dst_ep_it = endpoints.find(dest_def.endpointId);
                 if (dst_ep_it == endpoints.end()) throw std::runtime_error("Destination endpoint not found: " + dest_def.endpointId);
-                auto* dst_ep = dst_ep_it->second.get();
+                std::shared_ptr<hakoniwa::pdu::Endpoint> dst_ep = dst_ep_it->second;
 
                 for (const auto& trans_pdu_def : conn_def.transferPdus) {
                     auto policy = policy_map.at(trans_pdu_def.policyId);
                     const auto& pdu_keys = config.pduKeyGroups.at(trans_pdu_def.pduKeyGroupId);
 
                     for (const auto& pdu_key_def : pdu_keys) {
-                        auto transfer_pdu = std::make_unique<TransferPdu>(pdu_key_def, policy, pdu_def, src_ep, dst_ep);
+                        auto transfer_pdu = std::make_unique<TransferPdu>(pdu_key_def, policy, src_ep, dst_ep);
                         connection->add_transfer_pdu(std::move(transfer_pdu));
                     }
                 }

@@ -1,11 +1,16 @@
 #include "hakoniwa/pdu/bridge/bridge_core.hpp"
+#include "hakoniwa/pdu/bridge/time_source.hpp" // For ITimeSource
 #include <thread>
 #include <chrono>
 
 namespace hako::pdu::bridge {
 
-BridgeCore::BridgeCore(const std::string& node_name) 
-    : node_name_(node_name), is_running_(false) {}
+BridgeCore::BridgeCore(const std::string& node_name, std::shared_ptr<ITimeSource> time_source) 
+    : node_name_(node_name), is_running_(false), time_source_(time_source) {
+    if (!time_source_) {
+        throw std::runtime_error("BridgeCore: Time source cannot be null.");
+    }
+}
 
 void BridgeCore::add_connection(std::unique_ptr<BridgeConnection> connection) {
     connections_.push_back(std::move(connection));
@@ -18,9 +23,11 @@ void BridgeCore::run() {
     }
 
     while (is_running_) {
-        auto now = std::chrono::steady_clock::now();
+        // Get time from the abstract time source
+        // auto now = time_source_->get_steady_clock_time(); // Not used directly here anymore.
+
         for (auto& connection : connections_) {
-            connection->step(now);
+            connection->step(time_source_); // Pass the shared_ptr to ITimeSource
         }
 
         // The sleep duration determines the resolution of the bridge.

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "hakoniwa/pdu/bridge/transfer_pdu.hpp"
+#include "hakoniwa/pdu/bridge/time_source.hpp" // Include for ITimeSource
 #include <vector>
 #include <memory>
 #include <chrono>
@@ -16,7 +17,7 @@ public:
 
     void add_transfer_pdu(std::unique_ptr<TransferPdu> pdu);
 
-    void step(std::chrono::steady_clock::time_point now);
+    void step(const std::shared_ptr<ITimeSource>& time_source);
 
 private:
     std::string node_id_;

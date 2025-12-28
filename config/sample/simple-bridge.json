@@ -1,5 +1,6 @@
 {
   "version": "2.0.0",
+  "time_source_type": "real",
 
   "transferPolicies": {
     "immediate": { "type": "immediate" },
@@ -17,8 +18,8 @@
     {
       "nodeId": "node1",
       "endpoints": [
-        { "id": "n1-epSrc", "mode": "local", "direction": "in" },
-        { "id": "n1-epDst", "mode": "local", "direction": "out" }
+        { "id": "n1-epSrc", "mode": "local", "config_path": "config/sample/endpoint/n1-epSrc.json" },
+        { "id": "n1-epDst", "mode": "local", "config_path": "config/sample/endpoint/n1-epDst.json" }
       ]
     }
   ],

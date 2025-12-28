@@ -1,4 +1,5 @@
 #include "hakoniwa/pdu/bridge/transfer_pdu.hpp"
+#include "hakoniwa/pdu/bridge/time_source.hpp" // For ITimeSource
 #include <iostream>
 #include <stdexcept> // For error handling
 #include <vector> // For std::vector<std::byte>
@@ -8,20 +9,15 @@ namespace hako::pdu::bridge {
 TransferPdu::TransferPdu(
     const hako::pdu::bridge::PduKey& config_key,
     std::shared_ptr<IPduTransferPolicy> policy,
-    hakoniwa::pdu::PduDefinition* pdu_definition,
-    hakoniwa::pdu::Endpoint* src,
-    hakoniwa::pdu::Endpoint* dst)
+    std::shared_ptr<hakoniwa::pdu::Endpoint> src,
+    std::shared_ptr<hakoniwa::pdu::Endpoint> dst)
     : config_pdu_key_(config_key),
       endpoint_pdu_key_({config_key.robot_name, config_key.pdu_name}), // Convert to endpoint PduKey
       policy_(policy),
-      pdu_definition_(pdu_definition),
       src_endpoint_(src),
       dst_endpoint_(dst),
       is_active_(true),
       owner_epoch_(0) {
-    if (!pdu_definition_) {
-        throw std::runtime_error("TransferPdu: PDU Definition is null.");
-    }
     if (!src_endpoint_ || !dst_endpoint_) {
         throw std::runtime_error("TransferPdu: Source or Destination endpoint is null.");
     }
@@ -35,19 +31,19 @@ void TransferPdu::set_epoch(uint64_t epoch) {
     owner_epoch_ = epoch;
 }
 
-void TransferPdu::try_transfer(std::chrono::steady_clock::time_point now) {
+void TransferPdu::try_transfer(const std::shared_ptr<ITimeSource>& time_source) {
     if (!is_active_) {
         return;
     }
-    if (policy_->should_transfer(now)) {
+    if (policy_->should_transfer(time_source)) {
         transfer();
-        policy_->on_transferred(now);
+        policy_->on_transferred(time_source);
     }
 }
 
 void TransferPdu::transfer() {
-    size_t pdu_size = pdu_definition_->get_pdu_size(
-        endpoint_pdu_key_.robot, endpoint_pdu_key_.pdu
+    size_t pdu_size = src_endpoint_->get_pdu_size(
+        endpoint_pdu_key_
     );
 
     if (pdu_size == 0) {
