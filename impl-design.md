@@ -106,6 +106,17 @@ config/schema/bridge-config.schema.json を参照
 * 「C++20、エラーハンドリングは HakoPduErrorType（または例外禁止）」
 * 「まずは動く最小を作り、その後拡張」
 
+# 単体テストの追加
+
+- ローダーのテストが欲しい
+  - スキーマをベースにした数パターンのテストコンフィグファイルの作成と読み込みテスト
+- mock endpointを使ったTransferPduの動作テスト
+  - immediate/throttle/tickerポリシーごとに分けてテストケースを作成
+- BridgeConnectionのstep()メソッドの動作テスト
+  - 複数のTransferPduが正しく動作するか確認
+- BridgeCoreのrunループの基本動作テスト
+  - 複数のBridgeConnectionが正しく処理されるか確認
+
 # リファクタリングメモ
 
 - BridgeCoreのrunループは、将来的にマルチスレッド化したい（品質安定したら）
