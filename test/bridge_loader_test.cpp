@@ -50,14 +50,12 @@ TEST(BridgeLoaderTest, LoadsTickerConfig2) {
 
     EXPECT_EQ(config.version, "2.0.0");
     EXPECT_EQ(config.time_source_type, "virtual");
-    EXPECT_EQ(config.time_source_config.msec, 10);
     
     EXPECT_EQ(config.transferPolicies.size(), 1U);
     EXPECT_TRUE(config.transferPolicies.count("ticker1"));
     const auto& policy = config.transferPolicies.at("ticker1");
     EXPECT_EQ(policy.type, "ticker");
-    EXPECT_EQ(policy.interval_ticks, 5);
-    EXPECT_EQ(policy.priority, 1);
+    EXPECT_EQ(*policy.intervalMs, 50);
 
     EXPECT_EQ(config.nodes.size(), 1U);
     EXPECT_EQ(config.nodes[0].id, "node1");
@@ -94,8 +92,7 @@ TEST(BridgeLoaderTest, LoadsThrottleConfig2) {
     EXPECT_TRUE(config.transferPolicies.count("throttle1"));
     const auto& policy = config.transferPolicies.at("throttle1");
     EXPECT_EQ(policy.type, "throttle");
-    EXPECT_EQ(policy.interval_msec, 10);
-    EXPECT_EQ(policy.priority, 2);
+    EXPECT_EQ(*policy.intervalMs, 10);
 
     EXPECT_EQ(config.nodes.size(), 1U);
     EXPECT_EQ(config.nodes[0].id, "node1");

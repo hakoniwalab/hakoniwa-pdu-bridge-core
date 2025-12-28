@@ -5,7 +5,7 @@
         "msec": 10
     },
     "transferPolicies": {
-      "ticker1": { "type": "ticker", "intervalTicks": 5, "priority": 1 }
+      "ticker1": { "type": "ticker", "intervalMs": 50 }
     },
     "nodes": [
       { "id": "node1" }

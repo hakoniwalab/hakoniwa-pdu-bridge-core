@@ -2,7 +2,7 @@
     "version": "2.0.0",
     "time_source_type": "real",
     "transferPolicies": {
-      "throttle1": { "type": "throttle", "intervalMs": 10, "priority": 2 }
+      "throttle1": { "type": "throttle", "intervalMs": 10 }
     },
     "nodes": [
       { "id": "node1" }
