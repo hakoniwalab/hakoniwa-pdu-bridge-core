@@ -6,19 +6,28 @@ namespace hako::pdu::bridge {
 
 class RealTimeSource : public ITimeSource {
 public:
-    RealTimeSource() : start_time_(std::chrono::steady_clock::now()) {}
+    RealTimeSource()
+      : start_us_(now_us()) {}
 
-    virtual std::chrono::steady_clock::time_point get_steady_clock_time() const override {
-        return std::chrono::steady_clock::now();
+    uint64_t get_steady_clock_time() const override {
+        return now_us(); // “絶対us”(steady epoch基準)
     }
 
-    virtual uint64_t get_microseconds() const override {
-        auto duration = std::chrono::steady_clock::now() - start_time_;
-        return std::chrono::duration_cast<std::chrono::microseconds>(duration).count();
+    uint64_t get_microseconds() const override {
+        return now_us() - start_us_; // “起点からの経過us”
     }
 
 private:
-    std::chrono::steady_clock::time_point start_time_;
+    static uint64_t now_us() {
+        return static_cast<uint64_t>(
+            std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::steady_clock::now().time_since_epoch()
+            ).count()
+        );
+    }
+
+    uint64_t start_us_;
 };
+
 
 } // namespace hako::pdu::bridge

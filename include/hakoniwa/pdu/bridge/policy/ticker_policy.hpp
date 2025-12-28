@@ -8,15 +8,15 @@ namespace hako::pdu::bridge {
 
 class TickerPolicy : public IPduTransferPolicy {
 public:
-    explicit TickerPolicy(std::chrono::milliseconds interval);
+    explicit TickerPolicy(uint64_t interval);
     ~TickerPolicy() = default;
 
     bool should_transfer(const std::shared_ptr<ITimeSource>& time_source) override;
     void on_transferred(const std::shared_ptr<ITimeSource>& time_source) override;
 
 private:
-    std::chrono::milliseconds interval_;
-    std::chrono::steady_clock::time_point next_tick_time_;
+    uint64_t interval_;
+    uint64_t next_tick_time_;
     bool initialized_;
 };
 

@@ -3,11 +3,11 @@
 
 namespace hako::pdu::bridge {
 
-TickerPolicy::TickerPolicy(std::chrono::milliseconds interval)
+TickerPolicy::TickerPolicy(uint64_t interval)
     : interval_(interval), initialized_(false) {}
 
 bool TickerPolicy::should_transfer(const std::shared_ptr<ITimeSource>& time_source) {
-    std::chrono::steady_clock::time_point now = time_source->get_steady_clock_time();
+    uint64_t now = time_source->get_steady_clock_time();
     if (!initialized_) {
         // On the first check, set the initial tick time but do not trigger a transfer.
         // The first transfer will occur after the first interval has passed.
@@ -19,7 +19,7 @@ bool TickerPolicy::should_transfer(const std::shared_ptr<ITimeSource>& time_sour
 }
 
 void TickerPolicy::on_transferred(const std::shared_ptr<ITimeSource>& time_source) {
-    std::chrono::steady_clock::time_point now = time_source->get_steady_clock_time();
+    uint64_t now = time_source->get_steady_clock_time();
     // This method is called after a transfer has been made.
     // We need to schedule the next tick.
     // To prevent drift, we calculate the next tick based on the previous scheduled tick,

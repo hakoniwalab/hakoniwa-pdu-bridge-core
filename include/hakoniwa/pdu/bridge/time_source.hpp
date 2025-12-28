@@ -10,7 +10,7 @@ public:
     virtual ~ITimeSource() = default;
 
     // Returns the current time as a steady_clock::time_point
-    virtual std::chrono::steady_clock::time_point get_steady_clock_time() const = 0;
+    virtual uint64_t get_steady_clock_time() const = 0;
 
     // Returns the current time in microseconds
     virtual uint64_t get_microseconds() const = 0;
