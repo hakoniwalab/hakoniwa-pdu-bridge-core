@@ -24,7 +24,8 @@ struct Node {
 struct EndpointDefinition {
     std::string id;
     std::string mode;
-    std::string config_path; // New field
+    std::string config_path;
+    std::string direction;
 };
 
 struct NodeEndpoints {
@@ -93,6 +94,7 @@ inline void from_json(const nlohmann::json& j, EndpointDefinition& e) {
     j.at("id").get_to(e.id);
     j.at("mode").get_to(e.mode);
     j.at("config_path").get_to(e.config_path);
+    j.at("direction").get_to(e.direction);
 }
 inline void from_json(const nlohmann::json& j, NodeEndpoints& n) {
     j.at("nodeId").get_to(n.nodeId);

@@ -102,11 +102,16 @@
     "endpoint": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "mode", "config_path"],
+      "required": ["id", "mode", "config_path", "direction"],
       "properties": {
         "id": { "$ref": "#/$defs/id" },
         "mode": { "$ref": "#/$defs/endpointMode" },
-        "config_path": { "type": "string", "minLength": 1, "description": "Path to the endpoint's JSON configuration file." }
+        "config_path": { "type": "string", "minLength": 1, "description": "Path to the endpoint's JSON configuration file." },
+        "direction": {
+          "type": "string",
+          "enum": ["in", "out", "inout"],
+          "description": "Direction of the endpoint."
+        }
       }
     },
 
