@@ -1,5 +1,5 @@
 #include "hakoniwa/pdu/bridge/bridge_core.hpp"
-#include "hakoniwa/pdu/bridge/time_source.hpp" // For ITimeSource
+#include "hakoniwa/pdu/bridge/time_source/time_source.hpp" // For ITimeSource
 #include <thread>
 #include <chrono>
 

@@ -22,7 +22,7 @@
     },
     "time_source_type": {
       "type": "string",
-      "enum": ["real", "virtual"],
+      "enum": ["real", "virtual", "hakoniwa"],
       "description": "Specifies the type of time source to use: 'real' for system time, 'virtual' for simulated time."
     },
 

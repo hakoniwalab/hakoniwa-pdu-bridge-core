@@ -2,7 +2,7 @@
 
 #include "hakoniwa/pdu/bridge/bridge_types.hpp" // For hako::pdu::bridge::PduKey
 #include "hakoniwa/pdu/bridge/pdu_transfer_policy.hpp"
-#include "hakoniwa/pdu/bridge/time_source.hpp" // Include for ITimeSource
+#include "hakoniwa/pdu/bridge/time_source/time_source.hpp" // Include for ITimeSource
 #include "hakoniwa/pdu/endpoint.hpp" // Actual Endpoint class
 #include "hakoniwa/pdu/endpoint_types.hpp" // For hakoniwa::pdu::PduKey
 #include "hakoniwa/pdu/pdu_definition.hpp" // For hakoniwa::pdu::PduDefinition

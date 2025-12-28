@@ -2,7 +2,7 @@
 
 #include <chrono>
 #include <memory> // For std::shared_ptr
-#include "hakoniwa/pdu/bridge/time_source.hpp" // Include the time source interface
+#include "hakoniwa/pdu/bridge/time_source/time_source.hpp" // Include the time source interface
 
 namespace hako::pdu::bridge {
 

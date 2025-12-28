@@ -1,7 +1,7 @@
 #pragma once
 
 #include "hakoniwa/pdu/bridge/transfer_pdu.hpp"
-#include "hakoniwa/pdu/bridge/time_source.hpp" // Include for ITimeSource
+#include "hakoniwa/pdu/bridge/time_source/time_source.hpp" // Include for ITimeSource
 #include <vector>
 #include <memory>
 #include <chrono>

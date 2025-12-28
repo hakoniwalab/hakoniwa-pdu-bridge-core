@@ -5,6 +5,7 @@
 #include <map>
 #include <optional>
 #include <nlohmann/json.hpp> // Added for from_json functions
+#include "hakoniwa/pdu/endpoint_types.h"
 
 namespace hako::pdu::bridge {
 

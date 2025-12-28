@@ -1,6 +1,6 @@
 #pragma once
 
-#include "hakoniwa/pdu/bridge/time_source.hpp"
+#include "hakoniwa/pdu/bridge/time_source/time_source.hpp"
 
 namespace hako::pdu::bridge {
 

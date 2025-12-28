@@ -1,13 +1,13 @@
 #pragma once
 
-#include "hakoniwa/pdu/bridge/time_source.hpp"
+#include "hakoniwa/pdu/bridge/time_source/time_source.hpp"
 #include <atomic>
 
 namespace hako::pdu::bridge {
 
-class VirtualTimeSource : public ITimeSource {
+class HakoniwaTimeSource : public ITimeSource {
 public:
-    VirtualTimeSource() : current_time_micros_(0) {}
+    HakoniwaTimeSource() : current_time_micros_(0) {}
 
     virtual uint64_t get_microseconds() const override {
         return current_time_micros_.load();
