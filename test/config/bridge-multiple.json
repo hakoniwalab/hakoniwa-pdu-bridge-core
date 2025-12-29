@@ -13,15 +13,15 @@
       {
         "nodeId": "node1",
         "endpoints": [
-          { "id": "ep1", "mode": "local", "config_path": "../loader/dummy_endpoint.json" },
-          { "id": "ep2", "mode": "local", "config_path": "../loader/dummy_endpoint.json" }
+          { "id": "ep1", "mode": "local", "config_path": "../loader/dummy_endpoint.json", "direction": "out" },
+          { "id": "ep2", "mode": "local", "config_path": "../loader/dummy_endpoint.json", "direction": "in" }
         ]
       },
       {
         "nodeId": "node2",
         "endpoints": [
-          { "id": "ep3", "mode": "local", "config_path": "../loader/dummy_endpoint.json" },
-          { "id": "ep4", "mode": "local", "config_path": "../loader/dummy_endpoint.json" }
+          { "id": "ep3", "mode": "local", "config_path": "../loader/dummy_endpoint.json", "direction": "out" },
+          { "id": "ep4", "mode": "local", "config_path": "../loader/dummy_endpoint.json", "direction": "in" }
         ]
       }
     ],

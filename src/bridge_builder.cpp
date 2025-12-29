@@ -19,7 +19,7 @@ namespace hako::pdu::bridge {
     using json = nlohmann::json;
 
     // Helper to parse BridgeConfig from file
-    static BridgeConfig parse(const std::string& config_path) {
+    BridgeConfig parse(const std::string& config_path) {
         std::ifstream ifs(config_path);
         if (!ifs.is_open()) {
             throw std::runtime_error("BridgeLoader: Failed to open bridge config file: " + config_path);
@@ -28,7 +28,7 @@ namespace hako::pdu::bridge {
         ifs >> j;
         return j.get<BridgeConfig>();
     }
-    static std::unique_ptr<BridgeCore> build(const std::string& config_file_path, const std::string& node_name)
+    std::unique_ptr<BridgeCore> build(const std::string& config_file_path, const std::string& node_name)
     {
         BridgeConfig bridge_config = parse(config_file_path);
 
