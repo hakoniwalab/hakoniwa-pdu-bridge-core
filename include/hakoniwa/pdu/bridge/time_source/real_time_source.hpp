@@ -1,6 +1,8 @@
 #pragma once
 
 #include "hakoniwa/pdu/bridge/time_source/time_source.hpp"
+#include <chrono>
+#include <thread>
 
 namespace hako::pdu::bridge {
 
@@ -12,6 +14,9 @@ public:
 
     uint64_t get_microseconds() const override {
         return now_us() - start_us_; // “起点からの経過us”
+    }
+    void sleep_delta_time() const override {
+        std::this_thread::sleep_for(std::chrono::microseconds(delta_time_microseconds_));
     }
 
 private:

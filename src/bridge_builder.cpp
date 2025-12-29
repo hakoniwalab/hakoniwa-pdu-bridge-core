@@ -38,7 +38,7 @@ namespace hako::pdu::bridge {
         ifs >> j;
         return j.get<BridgeConfig>();
     }
-    std::unique_ptr<BridgeCore> build(const std::string& config_file_path, const std::string& node_name)
+    std::unique_ptr<BridgeCore> build(const std::string& config_file_path, const std::string& node_name, uint64_t delta_time_step_usec)
     {
         fs::path bridge_path(config_file_path);
         fs::path base_dir = bridge_path.parent_path();
@@ -58,6 +58,7 @@ namespace hako::pdu::bridge {
         } else {
             throw std::runtime_error("BridgeLoader: Unknown time source type: " + bridge_config.time_source_type);
         }
+        time_source->set_delta_time_microseconds(delta_time_step_usec);
         /*
          * bridge core creation
          */

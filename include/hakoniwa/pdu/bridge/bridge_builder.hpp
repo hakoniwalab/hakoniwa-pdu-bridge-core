@@ -15,6 +15,6 @@ namespace hako::pdu::bridge {
  */
 BridgeConfig parse(const std::string& config_file_path);
 
-std::unique_ptr<BridgeCore> build(const std::string& config_file_path, const std::string& node_name);
+std::unique_ptr<BridgeCore> build(const std::string& config_file_path, const std::string& node_name, uint64_t delta_time_step_usec);
 
 } // namespace hako::pdu::bridge

@@ -17,22 +17,22 @@ void signal_handler(int signum) {
 }
 
 int main(int argc, char* argv[]) {
-    if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " <path_to_bridge.json> [node_name]" << std::endl;
+    if (argc < 3) {
+        std::cerr << "Usage: " << argv[0] << " <path_to_bridge.json> <delta_time_step_usec> [node_name]" << std::endl;
         return 1;
     }
     signal(SIGINT, signal_handler);
 
     std::string config_path = argv[1];
-    std::string node_name = (argc > 2) ? argv[2] : "node1";
+    uint64_t delta_time_step_usec = std::stoull(argv[2]);
+    std::string node_name = (argc > 3) ? argv[3] : "node1";
 
     try {
         // Load the bridge core using the high-level factory method
-        g_core = hako::pdu::bridge::build(config_path, node_name);
+        g_core = hako::pdu::bridge::build(config_path, node_name, delta_time_step_usec);
 
         std::cout << "Bridge core loaded for node " << node_name << ". Running... (Press Ctrl+C to stop)" << std::endl;
         while (g_core->advance_timestep()) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(10)); // Adjust timestep duration as needed
         }
         std::cout << "Bridge core stopped." << std::endl;
 

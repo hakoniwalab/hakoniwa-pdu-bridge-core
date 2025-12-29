@@ -16,6 +16,9 @@ public:
     virtual void advance_time(uint64_t microseconds) override {
         current_time_micros_ += microseconds;
     }
+    virtual void sleep_delta_time() const override {
+        // No actual sleeping in virtual time source
+    }
 
 private:
     std::atomic<uint64_t> current_time_micros_;

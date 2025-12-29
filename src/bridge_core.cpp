@@ -37,6 +37,7 @@ bool BridgeCore::advance_timestep() {
     for (auto& connection : connections_) {
         connection->step(time_source_);
     }
+    time_source_->sleep_delta_time();
     return true;
 }
 

@@ -19,6 +19,10 @@ public:
     {
         endpoint_maps_ = std::move(endpoint);
     }
+    uint64_t get_delta_time_microseconds() const
+    {
+        return time_source_->get_delta_time_microseconds();
+    }
 
     void start();
 
