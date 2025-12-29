@@ -105,8 +105,7 @@ void hakoniwa::pdu::bridge::TransferPdu::transfer() {
         return;
     }
 
-    std::cout << "DEBUG: Transferred PDU: " << config_pdu_key_.id << " from " << src_endpoint_->get_name()
-              << " to " << dst_endpoint_->get_name() << std::endl;
+    //std::cout << "DEBUG: Transferred PDU: " << config_pdu_key_.id << " from " << src_endpoint_->get_name()  << " to " << dst_endpoint_->get_name() << std::endl;
 }
 
 bool hakoniwa::pdu::bridge::TransferPdu::accept_epoch(uint64_t pdu_epoch) {

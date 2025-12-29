@@ -26,6 +26,21 @@ public:
 
     void start();
 
+    bool is_running() const
+    {
+        if (!is_running_) {
+            return false;
+        }
+        for (const auto& endpoint: endpoint_maps_) {
+            bool ep_running = false;
+            endpoint.second->is_running(ep_running);
+            if (!ep_running) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     // Starts the main execution loop. This is a blocking call.
     bool advance_timestep();
 

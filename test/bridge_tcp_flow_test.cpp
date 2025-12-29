@@ -32,8 +32,13 @@ TEST(BridgeTcpFlowTest, ImmediatePolicyCrossNode) {
 
     // Start server first
     server_core->start();
-    std::this_thread::sleep_for(std::chrono::milliseconds(50)); // give server time to listen
     client_core->start();
+    while (!server_core->is_running()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    while (!client_core->is_running()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
 
     auto src_ep = client_endpoints.at("epA_src");
     auto dst_ep = server_endpoints.at("epB_dst");
