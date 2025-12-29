@@ -16,7 +16,7 @@
 #include <memory>
 #include <vector>
 
-namespace hako::pdu::bridge::test {
+namespace hakoniwa::pdu::bridge::test {
 
 namespace {
 std::vector<std::byte> make_payload(uint64_t epoch, size_t size) {
@@ -128,4 +128,4 @@ TEST(TransferPduTest, ImmediatePolicyNoPdu) {
     EXPECT_EQ(dst->send_count(make_endpoint_key("Robot1", "pos")), 0U);
 }
 
-} // namespace hako::pdu::bridge::test
+} // namespace hakoniwa::pdu::bridge::test

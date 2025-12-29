@@ -3,7 +3,7 @@
 #include "hakoniwa/pdu/bridge/time_source/time_source.hpp"
 #include <atomic>
 
-namespace hako::pdu::bridge {
+namespace hakoniwa::pdu::bridge {
 
 class VirtualTimeSource : public ITimeSource {
 public:
@@ -24,4 +24,4 @@ private:
     std::atomic<uint64_t> current_time_micros_;
 };
 
-} // namespace hako::pdu::bridge
+} // namespace hakoniwa::pdu::bridge

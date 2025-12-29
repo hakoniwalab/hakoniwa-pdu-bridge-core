@@ -4,16 +4,16 @@
 #include <stdexcept> // For error handling
 #include <vector> // For std::vector<std::byte>
 
-namespace hako::pdu::bridge {
-
-TransferPdu::TransferPdu(
-    const hako::pdu::bridge::PduKey& config_key,
+hakoniwa::pdu::bridge::TransferPdu::TransferPdu(
+    const hakoniwa::pdu::bridge::PduKey& config_key,
     std::shared_ptr<IPduTransferPolicy> policy,
+    std::shared_ptr<ITimeSource> time_source,
     std::shared_ptr<hakoniwa::pdu::Endpoint> src,
     std::shared_ptr<hakoniwa::pdu::Endpoint> dst)
     : config_pdu_key_(config_key),
       endpoint_pdu_key_({config_key.robot_name, config_key.pdu_name}), // Convert to endpoint PduKey
       policy_(policy),
+      time_source_(time_source),
       src_endpoint_(src),
       dst_endpoint_(dst),
       is_active_(true),
@@ -21,27 +21,35 @@ TransferPdu::TransferPdu(
     if (!src_endpoint_ || !dst_endpoint_) {
         throw std::runtime_error("TransferPdu: Source or Destination endpoint is null.");
     }
+    if (!policy_->is_cyclic_trigger()) {
+        // Register callback for non-cyclic triggers
+        src_endpoint_->set_on_recv_callback(
+            [this](const hakoniwa::pdu::PduResolvedKey& pdu_key, std::span<const std::byte> data) {
+                this->on_recv_callback(pdu_key, data);
+            }
+        );
+    }
 }
 
-void TransferPdu::set_active(bool is_active) {
+void hakoniwa::pdu::bridge::TransferPdu::set_active(bool is_active) {
     is_active_ = is_active;
 }
 
-void TransferPdu::set_epoch(uint64_t epoch) {
+void hakoniwa::pdu::bridge::TransferPdu::set_epoch(uint64_t epoch) {
     owner_epoch_ = epoch;
 }
 
-void TransferPdu::try_transfer(const std::shared_ptr<ITimeSource>& time_source) {
+void hakoniwa::pdu::bridge::TransferPdu::try_transfer() {
     if (!is_active_) {
         return;
     }
-    if (policy_->should_transfer(time_source)) {
+    if (policy_->should_transfer(time_source_)) {
         transfer();
-        policy_->on_transferred(time_source);
+        policy_->on_transferred(time_source_);
     }
 }
 
-void TransferPdu::transfer() {
+void hakoniwa::pdu::bridge::TransferPdu::transfer() {
     size_t pdu_size = src_endpoint_->get_pdu_size(
         endpoint_pdu_key_
     );
@@ -101,10 +109,9 @@ void TransferPdu::transfer() {
               << " to " << dst_endpoint_->get_name() << std::endl;
 }
 
-bool TransferPdu::accept_epoch(uint64_t pdu_epoch) {
+bool hakoniwa::pdu::bridge::TransferPdu::accept_epoch(uint64_t pdu_epoch) {
     // Per impl-design.md, the receiver should discard PDUs from older epochs.
     // The `owner_epoch_` represents the current valid epoch for this node.
     return pdu_epoch >= owner_epoch_;
 }
 
-} // namespace hako::pdu::bridge

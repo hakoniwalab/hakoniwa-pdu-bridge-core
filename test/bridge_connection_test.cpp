@@ -13,7 +13,7 @@
 #include <memory>
 #include <vector>
 
-namespace hako::pdu::bridge::test {
+namespace hakoniwa::pdu::bridge::test {
 
 namespace {
 std::vector<std::byte> make_payload(uint64_t epoch, size_t size) {
@@ -72,4 +72,4 @@ TEST(BridgeConnectionTest, StepTransfersToMultipleDestinations) {
     EXPECT_EQ(dst2->send_count(make_endpoint_key("Robot1", "status")), 1U);
 }
 
-} // namespace hako::pdu::bridge::test
+} // namespace hakoniwa::pdu::bridge::test

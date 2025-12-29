@@ -3,7 +3,7 @@
 #include <thread>
 #include <chrono>
 
-namespace hako::pdu::bridge {
+namespace hakoniwa::pdu::bridge {
 
 BridgeCore::BridgeCore(const std::string& node_name, std::shared_ptr<ITimeSource> time_source) 
     : node_name_(node_name), is_running_(false), time_source_(time_source) {
@@ -35,7 +35,7 @@ bool BridgeCore::advance_timestep() {
         return false;
     }
     for (auto& connection : connections_) {
-        connection->step(time_source_);
+        connection->cyclic_trigger();
     }
     time_source_->sleep_delta_time();
     return true;
@@ -45,4 +45,4 @@ void BridgeCore::stop() {
     is_running_ = false;
 }
 
-} // namespace hako::pdu::bridge
+} // namespace hakoniwa::pdu::bridge

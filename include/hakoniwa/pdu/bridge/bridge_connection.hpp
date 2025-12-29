@@ -7,7 +7,7 @@
 #include <chrono>
 #include <string>
 
-namespace hako::pdu::bridge {
+namespace hakoniwa::pdu::bridge {
 
 class BridgeConnection {
 public:
@@ -17,13 +17,13 @@ public:
 
     void add_transfer_pdu(std::unique_ptr<TransferPdu> pdu);
 
-    void step(const std::shared_ptr<ITimeSource>& time_source);
+    void cyclic_trigger();
 
 private:
     std::string node_id_;
     std::vector<std::unique_ptr<TransferPdu>> transfer_pdus_;
 };
 
-} // namespace hako::pdu::bridge
+} // namespace hakoniwa::pdu::bridge
 
 

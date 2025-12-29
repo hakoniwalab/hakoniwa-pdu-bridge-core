@@ -4,11 +4,13 @@
 #include <memory> // For std::shared_ptr
 #include "hakoniwa/pdu/bridge/time_source/time_source.hpp" // Include the time source interface
 
-namespace hako::pdu::bridge {
+namespace hakoniwa::pdu::bridge {
 
 class IPduTransferPolicy {
 public:
     virtual ~IPduTransferPolicy() = default;
+
+    virtual bool is_cyclic_trigger() const { return false; }
 
     // Checks if a transfer should occur using the provided time source.
     virtual bool should_transfer(const std::shared_ptr<ITimeSource>& time_source) = 0;
@@ -17,6 +19,6 @@ public:
     virtual void on_transferred(const std::shared_ptr<ITimeSource>& time_source) = 0;
 };
 
-} // namespace hako::pdu::bridge
+} // namespace hakoniwa::pdu::bridge
 
 

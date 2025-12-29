@@ -3,7 +3,7 @@
 #include <chrono>
 #include <cstdint> // For uint64_t
 
-namespace hako::pdu::bridge {
+namespace hakoniwa::pdu::bridge {
 
 class ITimeSource {
 public:
@@ -28,4 +28,4 @@ protected:
     uint64_t delta_time_microseconds_ = 0;
 };
 
-} // namespace hako::pdu::bridge
+} // namespace hakoniwa::pdu::bridge

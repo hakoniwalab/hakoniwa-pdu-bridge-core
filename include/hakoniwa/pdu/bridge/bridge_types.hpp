@@ -7,7 +7,7 @@
 #include <nlohmann/json.hpp> // Added for from_json functions
 #include "hakoniwa/pdu/endpoint_types.h"
 
-namespace hako::pdu::bridge {
+namespace hakoniwa::pdu::bridge {
 
 // from transferPolicies
 struct TransferPolicy {
@@ -140,5 +140,5 @@ inline void from_json(const nlohmann::json& j, BridgeConfig& b) {
 }
 
 
-} // namespace hako::pdu::bridge
+} // namespace hakoniwa::pdu::bridge
 

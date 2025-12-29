@@ -1,7 +1,7 @@
 #include "hakoniwa/pdu/bridge/policy/throttle_policy.hpp"
 #include "hakoniwa/pdu/bridge/time_source/time_source.hpp" // For ITimeSource
 
-namespace hako::pdu::bridge {
+namespace hakoniwa::pdu::bridge {
 
 ThrottlePolicy::ThrottlePolicy(uint64_t interval_microseconds)
     : interval_micros_(interval_microseconds),
@@ -24,4 +24,4 @@ void ThrottlePolicy::on_transferred(const std::shared_ptr<ITimeSource>& time_sou
     has_transferred_ = true;
 }
 
-} // namespace hako::pdu::bridge
+} // namespace hakoniwa::pdu::bridge

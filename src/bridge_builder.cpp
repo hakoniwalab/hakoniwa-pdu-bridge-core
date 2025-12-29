@@ -16,7 +16,7 @@
 #include <filesystem>
 namespace fs = std::filesystem;
 
-namespace hako::pdu::bridge {
+namespace hakoniwa::pdu::bridge {
 
     using json = nlohmann::json;
     fs::path resolve_under_base(const fs::path& base_dir, const std::string& maybe_rel)
@@ -156,7 +156,7 @@ namespace hako::pdu::bridge {
                     const auto& pdu_keys = bridge_config.pduKeyGroups.at(trans_pdu_def.pduKeyGroupId);
 
                     for (const auto& pdu_key_def : pdu_keys) {
-                        auto transfer_pdu = std::make_unique<TransferPdu>(pdu_key_def, policy, src_ep, dst_ep);
+                        auto transfer_pdu = std::make_unique<TransferPdu>(pdu_key_def, policy, time_source, src_ep, dst_ep);
                         connection->add_transfer_pdu(std::move(transfer_pdu));
                     }
                 }

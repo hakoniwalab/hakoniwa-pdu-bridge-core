@@ -1,7 +1,7 @@
 #include "hakoniwa/pdu/bridge/policy/ticker_policy.hpp"
 #include "hakoniwa/pdu/bridge/time_source/time_source.hpp" // For ITimeSource
 
-namespace hako::pdu::bridge {
+namespace hakoniwa::pdu::bridge {
 
 TickerPolicy::TickerPolicy(uint64_t interval)
     : interval_(interval), initialized_(false) {}
@@ -31,4 +31,4 @@ void TickerPolicy::on_transferred(const std::shared_ptr<ITimeSource>& time_sourc
     } while (next_tick_time_ <= now);
 }
 
-} // namespace hako::pdu::bridge
+} // namespace hakoniwa::pdu::bridge

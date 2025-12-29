@@ -7,7 +7,7 @@
 #include <atomic>
 #include <string>
 
-namespace hako::pdu::bridge {
+namespace hakoniwa::pdu::bridge {
 
 class BridgeCore {
 public:
@@ -40,4 +40,4 @@ private:
     std::shared_ptr<ITimeSource> time_source_;
 };
 
-} // namespace hako::pdu::bridge
+} // namespace hakoniwa::pdu::bridge

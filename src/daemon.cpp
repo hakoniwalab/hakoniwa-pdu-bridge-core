@@ -5,7 +5,7 @@
 #include <thread>
 
 // Global pointer to the core for the signal handler
-std::unique_ptr<hako::pdu::bridge::BridgeCore> g_core;
+std::unique_ptr<hakoniwa::pdu::bridge::BridgeCore> g_core;
 
 void signal_handler(int signum) {
     if (signum == SIGINT) {
@@ -29,7 +29,7 @@ int main(int argc, char* argv[]) {
 
     try {
         // Load the bridge core using the high-level factory method
-        g_core = hako::pdu::bridge::build(config_path, node_name, delta_time_step_usec);
+        g_core = hakoniwa::pdu::bridge::build(config_path, node_name, delta_time_step_usec);
 
         std::cout << "Bridge core loaded for node " << node_name << ". Running... (Press Ctrl+C to stop)" << std::endl;
         while (g_core->advance_timestep()) {

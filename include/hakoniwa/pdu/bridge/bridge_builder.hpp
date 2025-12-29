@@ -8,7 +8,7 @@
 #include <memory>
 #include <map>
 
-namespace hako::pdu::bridge {
+namespace hakoniwa::pdu::bridge {
 
 /*
  * just simply, loads the config file and converts to BridgeConfig
@@ -17,4 +17,4 @@ BridgeConfig parse(const std::string& config_file_path);
 
 std::unique_ptr<BridgeCore> build(const std::string& config_file_path, const std::string& node_name, uint64_t delta_time_step_usec);
 
-} // namespace hako::pdu::bridge
+} // namespace hakoniwa::pdu::bridge

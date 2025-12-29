@@ -4,7 +4,7 @@
 #include <chrono>
 #include <thread>
 
-namespace hako::pdu::bridge {
+namespace hakoniwa::pdu::bridge {
 
 class RealTimeSource : public ITimeSource {
 public:
@@ -32,4 +32,4 @@ private:
 };
 
 
-} // namespace hako::pdu::bridge
+} // namespace hakoniwa::pdu::bridge

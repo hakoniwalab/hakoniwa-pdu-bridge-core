@@ -5,7 +5,7 @@
 #include <chrono>
 #include <memory> // For std::shared_ptr
 
-namespace hako::pdu::bridge {
+namespace hakoniwa::pdu::bridge {
 
 class ThrottlePolicy : public IPduTransferPolicy {
 public:
@@ -13,6 +13,7 @@ public:
 
     bool should_transfer(const std::shared_ptr<ITimeSource>& time_source) override;
     void on_transferred(const std::shared_ptr<ITimeSource>& time_source) override;
+    bool is_cyclic_trigger() const override { return false; }
 
 private:
     uint64_t interval_micros_;
@@ -20,4 +21,4 @@ private:
     std::atomic<bool> has_transferred_;
 };
 
-} // namespace hako::pdu::bridge
+} // namespace hakoniwa::pdu::bridge
