@@ -30,7 +30,9 @@ public:
     // Attempts to transfer data based on the policy.
     void cyclic_trigger()
     {
-        try_transfer();
+        if (policy_->is_cyclic_trigger()) {
+            try_transfer();
+        }
     }
         
 private:
