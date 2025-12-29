@@ -18,8 +18,8 @@
     {
       "nodeId": "node1",
       "endpoints": [
-        { "id": "n1-epSrc", "mode": "local", "config_path": "config/sample/endpoint/n1-epSrc.json", "direction": "out" },
-        { "id": "n1-epDst", "mode": "local", "config_path": "config/sample/endpoint/n1-epDst.json", "direction": "in" }
+        { "id": "n1-epSrc", "mode": "local", "config_path": "endpoint/n1-epSrc.json", "direction": "out" },
+        { "id": "n1-epDst", "mode": "local", "config_path": "endpoint/n1-epDst.json", "direction": "in" }
       ]
     }
   ],

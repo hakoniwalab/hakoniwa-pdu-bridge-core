@@ -13,10 +13,20 @@
 
 #include <fstream>
 #include <stdexcept>
+#include <filesystem>
+namespace fs = std::filesystem;
 
 namespace hako::pdu::bridge {
 
     using json = nlohmann::json;
+    fs::path resolve_under_base(const fs::path& base_dir, const std::string& maybe_rel)
+    {
+        fs::path p(maybe_rel);
+        if (p.is_absolute()) {
+            return p.lexically_normal();
+        }
+        return (base_dir / p).lexically_normal();
+    }
 
     // Helper to parse BridgeConfig from file
     BridgeConfig parse(const std::string& config_path) {
@@ -30,6 +40,9 @@ namespace hako::pdu::bridge {
     }
     std::unique_ptr<BridgeCore> build(const std::string& config_file_path, const std::string& node_name)
     {
+        fs::path bridge_path(config_file_path);
+        fs::path base_dir = bridge_path.parent_path();
+
         BridgeConfig bridge_config = parse(config_file_path);
 
         /*
@@ -100,7 +113,8 @@ namespace hako::pdu::bridge {
                 auto endpoint = std::make_shared<hakoniwa::pdu::Endpoint>(
                     ep_def.id, direction
                 );
-                HakoPduErrorType err = endpoint->open(ep_def.config_path);
+                auto resolved_ep_path = resolve_under_base(base_dir, ep_def.config_path);
+                HakoPduErrorType err = endpoint->open(resolved_ep_path.string());
                 if (err != HAKO_PDU_ERR_OK) {
                     throw std::runtime_error(
                         "BridgeLoader: Failed to open endpoint config " + ep_def.config_path +

@@ -20,23 +20,23 @@
     {
       "nodeId": "node1",
       "endpoints": [
-        { "id": "n1-epSrc", "mode": "local", "config_path": "config/sample/endpoint/n1-epSrc.json" },
-        { "id": "n1-epDst-1", "mode": "wire", "config_path": "config/sample/endpoint/n1-epDst.json" },
-        { "id": "n1-epDst-2", "mode": "wire", "config_path": "config/sample/endpoint/n1-epDst.json" }
+        { "id": "n1-epSrc", "mode": "local", "config_path": "endpoint/n1-epSrc.json" },
+        { "id": "n1-epDst-1", "mode": "wire", "config_path": "endpoint/n1-epDst.json" },
+        { "id": "n1-epDst-2", "mode": "wire", "config_path": "endpoint/n1-epDst.json" }
       ]
     },
     {
       "nodeId": "node2",
       "endpoints": [
-        { "id": "n2-epSrc", "mode": "wire", "config_path": "config/sample/endpoint/n2-epSrc.json" },
-        { "id": "n2-epDst", "mode": "local", "config_path": "config/sample/endpoint/n2-epDst.json" }
+        { "id": "n2-epSrc", "mode": "wire", "config_path": "endpoint/n2-epSrc.json" },
+        { "id": "n2-epDst", "mode": "local", "config_path": "endpoint/n2-epDst.json" }
       ]
     },
     {
       "nodeId": "node3",
       "endpoints": [
-        { "id": "n3-epSrc", "mode": "wire", "config_path": "config/sample/endpoint/n3-epSrc.json" },
-        { "id": "n3-epDst", "mode": "local", "config_path": "config/sample/endpoint/n3-epDst.json" }
+        { "id": "n3-epSrc", "mode": "wire", "config_path": "endpoint/n3-epSrc.json" },
+        { "id": "n3-epDst", "mode": "local", "config_path": "endpoint/n3-epDst.json" }
       ]
     }
   ],
