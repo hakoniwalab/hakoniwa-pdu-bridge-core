@@ -1,5 +1,6 @@
 #include "hakoniwa/pdu/bridge/bridge_types.hpp"
 #include "hakoniwa/pdu/bridge/bridge_core.hpp"
+#include "hakoniwa/pdu/bridge/bridge_build_result.hpp"
 #include "hakoniwa/pdu/bridge/policy/immediate_policy.hpp"
 #include "hakoniwa/pdu/bridge/policy/throttle_policy.hpp"
 #include "hakoniwa/pdu/bridge/policy/ticker_policy.hpp"
@@ -38,7 +39,7 @@ namespace hakoniwa::pdu::bridge {
         ifs >> j;
         return j.get<BridgeConfig>();
     }
-    std::unique_ptr<BridgeCore> build(const std::string& config_file_path, const std::string& node_name, uint64_t delta_time_step_usec)
+    BridgeBuildResult build(const std::string& config_file_path, const std::string& node_name, uint64_t delta_time_step_usec)
     {
         fs::path bridge_path(config_file_path);
         fs::path base_dir = bridge_path.parent_path();
@@ -163,7 +164,7 @@ namespace hakoniwa::pdu::bridge {
             }
             core->add_connection(std::move(connection));
         }
-        return core;
+        return { std::move(core), endpoints_by_id };
     }
 
 }

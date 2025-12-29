@@ -1,5 +1,6 @@
 {
     "name": "n1-epSrc",
+    "pdu_def_path": "../../../hakoniwa-pdu-endpoint/config/sample/comm/hakoniwa/pdudef.json",
     "cache": "cache/internal_queue.json",
     "comm": null
 }

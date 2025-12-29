@@ -1,0 +1,43 @@
+{
+  "version": "2.0.0",
+  "time_source_type": "virtual",
+
+  "transferPolicies": {
+    "immediate": { "type": "immediate" }
+  },
+
+  "nodes": [
+    { "id": "node1" }
+  ],
+
+  "endpoints": [
+    {
+      "nodeId": "node1",
+      "endpoints": [
+        { "id": "n1-epSrc", "mode": "local", "config_path": "../../config/sample/endpoint/n1-epSrc.json", "direction": "out" },
+        { "id": "n1-epDst", "mode": "local", "config_path": "../../config/sample/endpoint/n1-epDst.json", "direction": "in" }
+      ]
+    }
+  ],
+  "wireLinks": [
+  ],
+  "pduKeyGroups": {
+    "pdu_group1": [
+      { "id": "Drone.pos", "robot_name": "Drone", "pdu_name": "pos" }
+    ]
+  },
+
+  "connections": [
+    {
+      "id": "conn1",
+      "nodeId": "node1",
+      "source": { "endpointId": "n1-epSrc" },
+      "destinations": [
+        { "endpointId": "n1-epDst" }
+      ],
+      "transferPdus": [
+        { "pduKeyGroupId": "pdu_group1", "policyId": "immediate" }
+      ]
+    }
+  ]
+}

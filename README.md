@@ -146,6 +146,18 @@ PDUの転送タイミングは、現実世界の物理現象や情報伝達の�
 
 ---
 
+## 時間ソース (Time Source)
+
+転送ポリシー、特に `throttle` や `ticker` が時間間隔を計測する際の基準となる「時間」を定義します。この設定は `bridge.json` のトップレベルで **`time_source_type`** として指定する必須項目です。
+
+- **`real`**: システムの壁時計時間（実時間）を基準にします。ブリッジは現実世界の時間で動作します。
+- **`virtual`**: 外部から提供される仮想的な時間を基準にします。主にシミュレーション環境で、特定の時間管理コンポーネントと同期する場合に使用されます。
+- **`hakoniwa`**: [Hakoniwaシミュレータ](https://github.com/toppers/hakoniwa-core)のコア時間と同期します。Hakoniwa環境下でのシミュレーション時間と厳密に連携する場合に選択します。
+
+時間ソースの選択は、ブリッジが現実のシステムと連携するのか、あるいは閉じたシミュレーション内で動作するのかを決定する、極めて重要な設定です。
+
+---
+
 以下の設定例は、「node1 で生成された PDU を、時間モデル immediate で node2 に流す」という**論理的な配線図**を JSON として記述したものです。
 
 ### 最小構成（immediate）
@@ -153,6 +165,7 @@ PDUの転送タイミングは、現実世界の物理現象や情報伝達の�
 ```json
 {
   "version": "2.0.0",
+  "time_source_type": "virtual",
   "transferPolicies": {
     "immediate_policy": { "type": "immediate" }
   },
@@ -164,15 +177,15 @@ PDUの転送タイミングは、現実世界の物理現象や情報伝達の�
     {
       "nodeId": "node1",
       "endpoints": [
-        { "id": "n1-src", "mode": "local" },
-        { "id": "n1-dst", "mode": "wire" }
+        { "id": "n1-src", "mode": "local", "config_path": "config/sample/endpoint/n1-epSrc.json", "direction": "out" },
+        { "id": "n1-dst", "mode": "wire", "config_path": "config/sample/endpoint/n1-epDst.json", "direction": "in" }
       ]
     },
     {
       "nodeId": "node2",
       "endpoints": [
-        { "id": "n2-src", "mode": "wire" },
-        { "id": "n2-dst", "mode": "local" }
+        { "id": "n2-src", "mode": "wire", "config_path": "config/sample/endpoint/n2-epSrc.json", "direction": "in" },
+        { "id": "n2-dst", "mode": "local", "config_path": "config/sample/endpoint/n2-epDst.json", "direction": "out" }
       ]
     }
   ],
@@ -290,10 +303,11 @@ PDUの転送タイミングは、現実世界の物理現象や情報伝達の�
 設定ファイルは、以下のトップレベルのプロパティを **すべて** 含む必要があります。
 
 -   **`version`**: (必須) 設定ファイルのバージョン。現在は `"2.0.0"` です。
+-   **`time_source_type`**: (必須) 時間の基準を `"real"`, `"virtual"`, `"hakoniwa"` から選択します。詳細は「時間ソース」のセクションを参照してください。
 -   **`transferPolicies`**: (必須) `immediate`, `throttle`, `ticker` などの転送ポリシーを、ユニークなID（キー）と共に定義します。
 -   **`nodes`**: (必須) ブリッジに関与するノードのリスト。
 -   **`endpoints`**: (必須) 各ノードの通信エンドポイントを定義します。エンドポイントは `local` (ノード内) または `wire` (外部通信用) のモードを持ちます。
--   **`wireLinks`**: (任意) 異なるノード間の `wire` エンドポイント接続を定義します。
+-   **`wireLinks`**: (必須) 異なるノード間の `wire` エンドポイント接続を定義します。
 -   **`pduKeyGroups`**: (必須) 関連するPDUをグループ化し、一括で管理するための仕組みです。
 -   **`connections`**: (必須) 転送の中核となる設定です。
     -   `nodeId`: 接続が属するノード。

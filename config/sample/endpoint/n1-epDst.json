@@ -1,5 +1,6 @@
 {
     "name": "n1-epDst",
+    "pdu_def_path": "../../../hakoniwa-pdu-endpoint/config/sample/comm/hakoniwa/pdudef.json",
     "cache": "cache/internal_buffer.json",
     "comm": null
 }

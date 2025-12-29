@@ -29,7 +29,8 @@ int main(int argc, char* argv[]) {
 
     try {
         // Load the bridge core using the high-level factory method
-        g_core = hakoniwa::pdu::bridge::build(config_path, node_name, delta_time_step_usec);
+        g_core = std::move(hakoniwa::pdu::bridge::build(config_path, node_name, delta_time_step_usec).core);
+        g_core->start();
 
         std::cout << "Bridge core loaded for node " << node_name << ". Running... (Press Ctrl+C to stop)" << std::endl;
         while (g_core->advance_timestep()) {
