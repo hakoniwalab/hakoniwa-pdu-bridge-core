@@ -1,4 +1,4 @@
-#include "hakoniwa/pdu/bridge/bridge_loader.hpp"
+#include "hakoniwa/pdu/bridge/bridge_builder.hpp"
 #include <iostream>
 #include <signal.h>
 #include <memory>
@@ -28,7 +28,7 @@ int main(int argc, char* argv[]) {
 
     try {
         // Load the bridge core using the high-level factory method
-        g_core = hako::pdu::bridge::BridgeLoader::create_bridge_from_config_file(config_path, node_name);
+        g_core = hako::pdu::bridge::build(config_path, node_name);
 
         std::cout << "Bridge core loaded for node " << node_name << ". Running... (Press Ctrl+C to stop)" << std::endl;
         g_core->run();

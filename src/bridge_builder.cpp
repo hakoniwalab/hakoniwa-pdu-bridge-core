@@ -1,5 +1,5 @@
-#include "hakoniwa/pdu/bridge/bridge_loader.hpp"
 #include "hakoniwa/pdu/bridge/bridge_types.hpp"
+#include "hakoniwa/pdu/bridge/bridge_core.hpp"
 #include "hakoniwa/pdu/bridge/policy/immediate_policy.hpp"
 #include "hakoniwa/pdu/bridge/policy/throttle_policy.hpp"
 #include "hakoniwa/pdu/bridge/policy/ticker_policy.hpp"
