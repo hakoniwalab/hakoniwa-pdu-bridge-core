@@ -3,6 +3,7 @@ find_package(GTest REQUIRED)
 set(TEST_SOURCES
     bridge_loader_test.cpp
     bridge_core_flow_test.cpp
+    bridge_tcp_flow_test.cpp
 )
 
 add_executable(hakoniwa_pdu_bridge_tests ${TEST_SOURCES})

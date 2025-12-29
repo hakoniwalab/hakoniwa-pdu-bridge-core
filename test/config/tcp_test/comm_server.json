@@ -1,0 +1,10 @@
+{
+  "protocol": "tcp",
+  "name": "tcp_server_in_54001",
+  "direction": "in",
+  "role": "server",
+  "local": {
+    "address": "127.0.0.1",
+    "port": 54001
+  }
+}

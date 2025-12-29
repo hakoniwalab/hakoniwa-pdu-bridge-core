@@ -1,0 +1,10 @@
+{
+  "protocol": "tcp",
+  "name": "tcp_client_out_54001",
+  "direction": "out",
+  "role": "client",
+  "remote": {
+    "address": "127.0.0.1",
+    "port": 54001
+  }
+}
