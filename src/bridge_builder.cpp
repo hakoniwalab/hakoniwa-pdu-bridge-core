@@ -124,7 +124,8 @@ namespace hako::pdu::bridge {
                 endpoints_by_id[ep_def.id] = std::move(endpoint);
             }
         }
-         
+        core->set_endpoint_maps(endpoints_by_id);
+
         /*
          * TransferPdu && connection section
          */

@@ -15,15 +15,22 @@ public:
     ~BridgeCore() = default;
 
     void add_connection(std::unique_ptr<BridgeConnection> connection);
+    void set_endpoint_maps(std::map<std::string, std::shared_ptr<hakoniwa::pdu::Endpoint>> endpoint)
+    {
+        endpoint_maps_ = std::move(endpoint);
+    }
+
+    void start();
 
     // Starts the main execution loop. This is a blocking call.
-    void run();
+    bool advance_timestep();
 
     // Stops the execution loop. This can be called from a different thread.
     void stop();
 
 private:
     std::string node_name_;
+    std::map<std::string, std::shared_ptr<hakoniwa::pdu::Endpoint>>  endpoint_maps_;
     std::vector<std::unique_ptr<BridgeConnection>> connections_;
     std::atomic<bool> is_running_;
     std::shared_ptr<ITimeSource> time_source_;

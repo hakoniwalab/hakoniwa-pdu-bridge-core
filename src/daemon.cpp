@@ -31,7 +31,9 @@ int main(int argc, char* argv[]) {
         g_core = hako::pdu::bridge::build(config_path, node_name);
 
         std::cout << "Bridge core loaded for node " << node_name << ". Running... (Press Ctrl+C to stop)" << std::endl;
-        g_core->run();
+        while (g_core->advance_timestep()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10)); // Adjust timestep duration as needed
+        }
         std::cout << "Bridge core stopped." << std::endl;
 
     } catch (const std::exception& e) {
