@@ -1,11 +1,11 @@
 #include "hakoniwa/pdu/bridge/bridge_core.hpp"
-#include "hakoniwa/pdu/bridge/time_source/time_source.hpp" // For ITimeSource
+#include "hakoniwa/time_source/time_source.hpp" // For ITimeSource
 #include <thread>
 #include <chrono>
 
 namespace hakoniwa::pdu::bridge {
 
-BridgeCore::BridgeCore(const std::string& node_name, std::shared_ptr<ITimeSource> time_source) 
+BridgeCore::BridgeCore(const std::string& node_name, std::shared_ptr<hakoniwa::time_source::ITimeSource> time_source) 
     : node_name_(node_name), is_running_(false), time_source_(time_source) {
     if (!time_source_) {
         throw std::runtime_error("BridgeCore: Time source cannot be null.");

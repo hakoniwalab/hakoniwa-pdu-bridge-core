@@ -2,7 +2,7 @@
 
 #include "hakoniwa/pdu/bridge/bridge_types.hpp" // For hakoniwa::pdu::bridge::PduKey
 #include "hakoniwa/pdu/bridge/pdu_transfer_policy.hpp"
-#include "hakoniwa/pdu/bridge/time_source/time_source.hpp" // Include for ITimeSource
+#include "hakoniwa/time_source/time_source.hpp" // Include for ITimeSource
 #include "hakoniwa/pdu/endpoint.hpp" // Actual Endpoint class
 #include "hakoniwa/pdu/endpoint_types.hpp" // For hakoniwa::pdu::PduKey
 #include "hakoniwa/pdu/pdu_definition.hpp" // For hakoniwa::pdu::PduDefinition
@@ -19,7 +19,7 @@ public:
     TransferPdu(
         const hakoniwa::pdu::bridge::PduKey& config_key, // The PduKey from bridge.json
         std::shared_ptr<IPduTransferPolicy> policy,
-        std::shared_ptr<ITimeSource> time_source,
+        std::shared_ptr<hakoniwa::time_source::ITimeSource> time_source,
         std::shared_ptr<hakoniwa::pdu::Endpoint> src,
         std::shared_ptr<hakoniwa::pdu::Endpoint> dst
     );
@@ -41,7 +41,7 @@ private:
     std::shared_ptr<IPduTransferPolicy> policy_;
     std::shared_ptr<hakoniwa::pdu::Endpoint>            src_endpoint_;
     std::shared_ptr<hakoniwa::pdu::Endpoint>            dst_endpoint_;
-    std::shared_ptr<ITimeSource>                        time_source_;
+    std::shared_ptr<hakoniwa::time_source::ITimeSource>  time_source_;
     bool is_active_ = false;
     uint64_t owner_epoch_ = 0;
     void on_recv_callback(const hakoniwa::pdu::PduResolvedKey& pdu_key, std::span<const std::byte> data)

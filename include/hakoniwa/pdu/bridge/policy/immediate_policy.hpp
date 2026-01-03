@@ -10,8 +10,8 @@ public:
     ImmediatePolicy() = default;
     ~ImmediatePolicy() = default;
 
-    bool should_transfer(const std::shared_ptr<ITimeSource>& time_source) override;
-    void on_transferred(const std::shared_ptr<ITimeSource>& time_source) override;
+    bool should_transfer(const std::shared_ptr<hakoniwa::time_source::ITimeSource>& time_source) override;
+    void on_transferred(const std::shared_ptr<hakoniwa::time_source::ITimeSource>& time_source) override;
 
     bool is_cyclic_trigger() const override { return false; }
 };

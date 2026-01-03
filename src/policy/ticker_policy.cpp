@@ -1,12 +1,12 @@
 #include "hakoniwa/pdu/bridge/policy/ticker_policy.hpp"
-#include "hakoniwa/pdu/bridge/time_source/time_source.hpp" // For ITimeSource
+#include "hakoniwa/time_source/time_source.hpp" // For ITimeSource
 
 namespace hakoniwa::pdu::bridge {
 
 TickerPolicy::TickerPolicy(uint64_t interval)
     : interval_(interval), initialized_(false) {}
 
-bool TickerPolicy::should_transfer(const std::shared_ptr<ITimeSource>& time_source) {
+bool TickerPolicy::should_transfer(const std::shared_ptr<hakoniwa::time_source::ITimeSource>& time_source) {
     uint64_t now = time_source->get_microseconds();
     if (!initialized_) {
         // On the first check, set the initial tick time but do not trigger a transfer.
@@ -18,7 +18,7 @@ bool TickerPolicy::should_transfer(const std::shared_ptr<ITimeSource>& time_sour
     return now >= next_tick_time_;
 }
 
-void TickerPolicy::on_transferred(const std::shared_ptr<ITimeSource>& time_source) {
+void TickerPolicy::on_transferred(const std::shared_ptr<hakoniwa::time_source::ITimeSource>& time_source) {
     uint64_t now = time_source->get_microseconds();
     next_tick_time_ = now + interval_;
 }

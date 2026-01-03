@@ -1,5 +1,5 @@
 #include "hakoniwa/pdu/bridge/policy/throttle_policy.hpp"
-#include "hakoniwa/pdu/bridge/time_source/time_source.hpp" // For ITimeSource
+#include "hakoniwa/time_source/time_source.hpp" // For ITimeSource
 
 namespace hakoniwa::pdu::bridge {
 
@@ -8,7 +8,7 @@ ThrottlePolicy::ThrottlePolicy(uint64_t interval_microseconds)
       last_transfer_time_micros_(0),
       has_transferred_(false) {}
 
-bool ThrottlePolicy::should_transfer(const std::shared_ptr<ITimeSource>& time_source) {
+bool ThrottlePolicy::should_transfer(const std::shared_ptr<hakoniwa::time_source::ITimeSource>& time_source) {
     if (!has_transferred_.load()) {
         return true;
     }
@@ -19,7 +19,7 @@ bool ThrottlePolicy::should_transfer(const std::shared_ptr<ITimeSource>& time_so
     return false;
 }
 
-void ThrottlePolicy::on_transferred(const std::shared_ptr<ITimeSource>& time_source) {
+void ThrottlePolicy::on_transferred(const std::shared_ptr<hakoniwa::time_source::ITimeSource>& time_source) {
     last_transfer_time_micros_ = time_source->get_microseconds();
     has_transferred_ = true;
 }

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "hakoniwa/pdu/bridge/bridge_connection.hpp"
-#include "hakoniwa/pdu/bridge/time_source/time_source.hpp" // Include for ITimeSource
+#include "hakoniwa/time_source/time_source.hpp" // Include for ITimeSource
 #include <vector>
 #include <memory>
 #include <atomic>
@@ -11,7 +11,7 @@ namespace hakoniwa::pdu::bridge {
 
 class BridgeCore {
 public:
-    BridgeCore(const std::string& node_name, std::shared_ptr<ITimeSource> time_source);
+    BridgeCore(const std::string& node_name, std::shared_ptr<hakoniwa::time_source::ITimeSource> time_source);
     ~BridgeCore() = default;
 
     void add_connection(std::unique_ptr<BridgeConnection> connection);
@@ -52,7 +52,7 @@ private:
     std::map<std::string, std::shared_ptr<hakoniwa::pdu::Endpoint>>  endpoint_maps_;
     std::vector<std::unique_ptr<BridgeConnection>> connections_;
     std::atomic<bool> is_running_;
-    std::shared_ptr<ITimeSource> time_source_;
+    std::shared_ptr<hakoniwa::time_source::ITimeSource> time_source_;
 };
 
 } // namespace hakoniwa::pdu::bridge

@@ -11,8 +11,8 @@ public:
     explicit TickerPolicy(uint64_t interval);
     ~TickerPolicy() = default;
 
-    bool should_transfer(const std::shared_ptr<ITimeSource>& time_source) override;
-    void on_transferred(const std::shared_ptr<ITimeSource>& time_source) override;
+    bool should_transfer(const std::shared_ptr<hakoniwa::time_source::ITimeSource>& time_source) override;
+    void on_transferred(const std::shared_ptr<hakoniwa::time_source::ITimeSource>& time_source) override;
     bool is_cyclic_trigger() const override { return true; }
 
 private:

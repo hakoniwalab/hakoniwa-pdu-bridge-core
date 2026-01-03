@@ -1,5 +1,5 @@
 #include "hakoniwa/pdu/bridge/transfer_pdu.hpp"
-#include "hakoniwa/pdu/bridge/time_source/time_source.hpp" // For ITimeSource
+#include "hakoniwa/time_source/time_source.hpp" // For ITimeSource
 #include <iostream>
 #include <stdexcept> // For error handling
 #include <vector> // For std::vector<std::byte>
@@ -7,7 +7,7 @@
 hakoniwa::pdu::bridge::TransferPdu::TransferPdu(
     const hakoniwa::pdu::bridge::PduKey& config_key,
     std::shared_ptr<IPduTransferPolicy> policy,
-    std::shared_ptr<ITimeSource> time_source,
+    std::shared_ptr<hakoniwa::time_source::ITimeSource> time_source,
     std::shared_ptr<hakoniwa::pdu::Endpoint> src,
     std::shared_ptr<hakoniwa::pdu::Endpoint> dst)
     : config_pdu_key_(config_key),
