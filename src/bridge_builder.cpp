@@ -4,9 +4,7 @@
 #include "hakoniwa/pdu/bridge/policy/immediate_policy.hpp"
 #include "hakoniwa/pdu/bridge/policy/throttle_policy.hpp"
 #include "hakoniwa/pdu/bridge/policy/ticker_policy.hpp"
-#include "hakoniwa/time_source/real_time_source.hpp"    // For RealTimeSource
-#include "hakoniwa/time_source/virtual_time_source.hpp" // For VirtualTimeSource
-#include "hakoniwa/time_source/hakoniwa_time_source.hpp" // For HakoniwaTimeSource
+#include "hakoniwa/time_source/time_source_factory.hpp"
 #include "hakoniwa/pdu/endpoint.hpp"          // Actual Endpoint class
 #include "hakoniwa/pdu/pdu_definition.hpp"    // For PduDefinition
 
@@ -49,17 +47,7 @@ namespace hakoniwa::pdu::bridge {
         /*
          * time source selection
          */
-        std::shared_ptr<hakoniwa::time_source::ITimeSource> time_source;
-        if (bridge_config.time_source_type == "real") {
-            time_source = std::make_shared<hakoniwa::time_source::RealTimeSource>();
-        } else if (bridge_config.time_source_type == "virtual") {
-            time_source = std::make_shared<hakoniwa::time_source::VirtualTimeSource>();
-        } else if (bridge_config.time_source_type == "hakoniwa") {
-            time_source = std::make_shared<hakoniwa::time_source::HakoniwaTimeSource>();
-        } else {
-            throw std::runtime_error("BridgeLoader: Unknown time source type: " + bridge_config.time_source_type);
-        }
-        time_source->set_delta_time_microseconds(delta_time_step_usec);
+        std::shared_ptr<hakoniwa::time_source::ITimeSource> time_source = hakoniwa::time_source::create_time_source(bridge_config.time_source_type, delta_time_step_usec);
         /*
          * bridge core creation
          */
