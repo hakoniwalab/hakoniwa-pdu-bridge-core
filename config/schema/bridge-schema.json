@@ -1,5 +1,5 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://hakoniwa-lab.net/schemas/hakoniwa-pdu-bridge-config-2.0.0.schema.json",
   "title": "Hakoniwa PDU Bridge Config",
   "type": "object",
