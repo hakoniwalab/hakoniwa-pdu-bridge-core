@@ -10,6 +10,11 @@ namespace hakoniwa::pdu::bridge {
 
 struct BridgeBuildResult {
     std::unique_ptr<BridgeCore> core;
+    std::string error_message;
+
+    bool ok() const {
+        return core != nullptr;
+    }
 };
 
 } // namespace hakoniwa::pdu::bridge

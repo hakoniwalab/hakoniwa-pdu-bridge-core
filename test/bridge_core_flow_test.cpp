@@ -23,6 +23,7 @@ TEST(BridgeCoreFlowTest, ImmediatePolicyFlow) {
     ASSERT_EQ(init_ret, HAKO_PDU_ERR_OK);
 
     auto result = hakoniwa::pdu::bridge::build(config_path("bridge-core-flow-test.json"), "node1", 1000, endpoint_container);
+    ASSERT_TRUE(result.ok()) << result.error_message;
     auto bridge_core = std::move(result.core);
 
     ASSERT_TRUE(bridge_core != nullptr);
