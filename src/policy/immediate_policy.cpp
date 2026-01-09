@@ -5,7 +5,12 @@ namespace hakoniwa::pdu::bridge {
 
 bool ImmediatePolicy::should_transfer(const PduResolvedKey& pdu_key, const std::shared_ptr<hakoniwa::time_source::ITimeSource>& /* time_source */) {
     if (is_atomic_) {
-        // In atomic mode, check if all PDUs have been received.
+        // In atomic mode, mark this PDU as received and check if all PDUs are ready.
+        auto it = recv_states_.find({pdu_key.robot, pdu_key.channel_id});
+        if (it == recv_states_.end()) {
+            return false;
+        }
+        it->second = true;
         for (const auto& pair : recv_states_) {
             if (!pair.second) {
                 return false; // At least one PDU has not been received yet.
@@ -18,14 +23,8 @@ bool ImmediatePolicy::should_transfer(const PduResolvedKey& pdu_key, const std::
 }
 
 void ImmediatePolicy::on_transferred(const PduResolvedKey& pdu_key, const std::shared_ptr<hakoniwa::time_source::ITimeSource>& /* time_source */) {
+    (void)pdu_key;
     if (is_atomic_) {
-        // Mark this PDU as received.
-        recv_states_[{pdu_key.robot, pdu_key.channel_id}] = true;
-        for (auto& pair : recv_states_) {
-            if (!pair.second) {
-                return;
-            }
-        }
         // Reset all states for the next atomic transfer.
         for (auto& pair : recv_states_) {
             pair.second = false;

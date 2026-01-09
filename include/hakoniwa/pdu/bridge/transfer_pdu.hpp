@@ -76,6 +76,7 @@ public:
     );
     void set_active(bool is_active) override;
     void set_epoch(uint64_t epoch) override;
+    // Event-driven only; cyclic_trigger is intentionally ignored.
     void cyclic_trigger() override;
 private:
     std::vector<std::unique_ptr<hakoniwa::pdu::PduResolvedKey>> transfer_atomic_pdu_group_;
@@ -94,4 +95,3 @@ private:
 };
 
 } // namespace hakoniwa::pdu::bridge
-

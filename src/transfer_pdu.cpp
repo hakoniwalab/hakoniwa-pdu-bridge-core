@@ -1,5 +1,6 @@
 #include "hakoniwa/pdu/bridge/transfer_pdu.hpp"
 #include "hakoniwa/time_source/time_source.hpp" // For ITimeSource
+#include "hakoniwa/pdu/bridge/policy/immediate_policy.hpp"
 #include <iostream>
 #include <stdexcept> // For error handling
 #include <vector> // For std::vector<std::byte>
@@ -21,9 +22,13 @@ hakoniwa::pdu::bridge::TransferPdu::TransferPdu(
     if (!src_endpoint_ || !dst_endpoint_) {
         throw std::runtime_error("TransferPdu: Source or Destination endpoint is null.");
     }
+    auto channel_id = src->get_pdu_channel_id(endpoint_pdu_key_);
+    endpoint_pdu_resolved_key_ = {
+        .robot = endpoint_pdu_key_.robot,
+        .channel_id = channel_id
+    };
     if (!policy_->is_cyclic_trigger()) {
-        // Register callback for non-cyclic triggers
-        auto channel_id = src->get_pdu_channel_id(endpoint_pdu_key_);
+        // Register callback for event-driven triggers
         PduResolvedKey pdu_resolved_key{
             .robot = endpoint_pdu_key_.robot,
             .channel_id = channel_id
@@ -35,10 +40,9 @@ hakoniwa::pdu::bridge::TransferPdu::TransferPdu(
             }
         );
     }
-    endpoint_pdu_resolved_key_ = {
-        .robot = endpoint_pdu_key_.robot,
-        .channel_id = src->get_pdu_channel_id(endpoint_pdu_key_)
-    };
+    if (auto immediate_policy = std::dynamic_pointer_cast<ImmediatePolicy>(policy_)) {
+        immediate_policy->add_pdu_key(endpoint_pdu_resolved_key_);
+    }
 }
 
 void hakoniwa::pdu::bridge::TransferPdu::set_active(bool is_active) {
@@ -143,10 +147,11 @@ hakoniwa::pdu::bridge::TransferAtomicPduGroup::TransferAtomicPduGroup(
         throw std::runtime_error("TransferAtomicPduGroup: Source or Destination endpoint is null.");
     }
 
-    // If the real policy is event-driven, the group must subscribe to the events.
-    if (!policy_->is_cyclic_trigger()) {
-        throw std::runtime_error("TransferAtomicPduGroup: Event-driven policies are not supported for atomic groups.");
+    // Atomic group is event-driven; cyclic policies are not supported.
+    if (policy_->is_cyclic_trigger()) {
+        throw std::runtime_error("TransferAtomicPduGroup: Cyclic policies are not supported for atomic groups.");
     }
+    auto immediate_policy = std::dynamic_pointer_cast<ImmediatePolicy>(policy_);
     for (const auto& key : config_keys) {
             auto channel_id = src->get_pdu_channel_id({key.robot_name, key.pdu_name});
             PduResolvedKey pdu_resolved_key{
@@ -154,6 +159,9 @@ hakoniwa::pdu::bridge::TransferAtomicPduGroup::TransferAtomicPduGroup(
             .channel_id = channel_id
         };
         transfer_atomic_pdu_group_.emplace_back(std::make_unique<hakoniwa::pdu::PduResolvedKey>(pdu_resolved_key));
+        if (immediate_policy) {
+            immediate_policy->add_pdu_key(pdu_resolved_key);
+        }
         src_endpoint_->subscribe_on_recv_callback(
             pdu_resolved_key,
             [this](const hakoniwa::pdu::PduResolvedKey& pdu_key, std::span<const std::byte> data) {
@@ -165,17 +173,17 @@ hakoniwa::pdu::bridge::TransferAtomicPduGroup::TransferAtomicPduGroup(
 
 void hakoniwa::pdu::bridge::TransferAtomicPduGroup::set_active(bool is_active)
 {
-    //TODO
+    is_active_ = is_active;
 }
 
 void hakoniwa::pdu::bridge::TransferAtomicPduGroup::set_epoch(uint64_t epoch)
 {
-    //TODO
+    owner_epoch_ = epoch;
 }
 
 void hakoniwa::pdu::bridge::TransferAtomicPduGroup::cyclic_trigger()
 {
-    throw std::runtime_error("TransferAtomicPduGroup: cyclic_trigger should not be called directly.");
+    // Event-driven only: cyclic_trigger is intentionally ignored.
 }
 
 void hakoniwa::pdu::bridge::TransferAtomicPduGroup::try_transfer(
@@ -186,7 +194,7 @@ void hakoniwa::pdu::bridge::TransferAtomicPduGroup::try_transfer(
     if (!is_active_) {
         return;
     }
-    // For event-driven policies, should_transfer is the only gate.
+    // Event-driven policies gate transfers by should_transfer().
     if (policy_->should_transfer(pdu_key, time_source_)) {
         try_transfer_group();
         policy_->on_transferred(pdu_key, time_source_);
@@ -235,4 +243,3 @@ void hakoniwa::pdu::bridge::TransferAtomicPduGroup::try_transfer_group()
     }
 
 }
-
