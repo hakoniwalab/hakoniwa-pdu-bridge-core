@@ -1,0 +1,6 @@
+{
+    "name": "n1-epSrc",
+    "pdu_def_path": "atomic_pdudef.json",
+    "cache": "cache/internal_queue.json",
+    "comm": null
+}

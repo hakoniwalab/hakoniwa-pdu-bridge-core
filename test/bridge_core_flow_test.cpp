@@ -67,4 +67,79 @@ TEST(BridgeCoreFlowTest, ImmediatePolicyFlow) {
     ASSERT_EQ(send_pdu, recv_pdu);
 }
 
+TEST(BridgeCoreFlowTest, AtomicPolicyFlow) {
+    // 1. Setup
+    std::shared_ptr<hakoniwa::pdu::EndpointContainer> endpoint_container = 
+        std::make_shared<hakoniwa::pdu::EndpointContainer>("node1", config_path("atomic_endpoints.json"));
+    HakoPduErrorType init_ret = endpoint_container->initialize();
+    if (init_ret != HAKO_PDU_ERR_OK)
+        std::cout << "error message: " << endpoint_container->last_error() << std::endl;
+    ASSERT_EQ(init_ret, HAKO_PDU_ERR_OK);
+
+    auto result = hakoniwa::pdu::bridge::build(config_path("bridge-atomic-core-test.json"), "node1", 1000, endpoint_container);
+    ASSERT_TRUE(result.ok()) << result.error_message;
+    auto bridge_core = std::move(result.core);
+
+    ASSERT_TRUE(bridge_core != nullptr);
+    ASSERT_EQ(endpoint_container->start_all(), HAKO_PDU_ERR_OK);
+    bridge_core->start();
+
+    auto src_ep = endpoint_container->ref("n1-epSrc");
+    auto dst_ep = endpoint_container->ref("n1-epDst");
+
+    // 2. Execution & Assertion
+    hakoniwa::pdu::PduKey pdu1_key = {"Test", "pdu1"};
+    hakoniwa::pdu::PduKey pdu2_key = {"Test", "pdu2"};
+    hakoniwa::pdu::PduKey pdu3_key = {"Test", "pdu3"};
+    hakoniwa::pdu::PduKey time_key = {"SimTime", "pdu"};
+
+    std::vector<std::byte> pdu1_data(src_ep->get_pdu_size(pdu1_key), std::byte(1));
+    std::vector<std::byte> pdu2_data(src_ep->get_pdu_size(pdu2_key), std::byte(2));
+    std::vector<std::byte> pdu3_data(src_ep->get_pdu_size(pdu3_key), std::byte(3));
+    std::vector<std::byte> time_data(src_ep->get_pdu_size(time_key), std::byte(9));
+
+    // Send first 3 PDUs
+    ASSERT_EQ(src_ep->send(pdu1_key, pdu1_data), HAKO_PDU_ERR_OK);
+    ASSERT_EQ(src_ep->send(pdu2_key, pdu2_data), HAKO_PDU_ERR_OK);
+    ASSERT_EQ(src_ep->send(pdu3_key, pdu3_data), HAKO_PDU_ERR_OK);
+
+    // Advance time
+    ASSERT_TRUE(bridge_core->advance_timestep());
+
+    // Assert that nothing is received
+    std::vector<std::byte> recv_buffer(128);
+    size_t received_size = 0;
+    ASSERT_EQ(dst_ep->recv(pdu1_key, recv_buffer, received_size), HAKO_PDU_ERR_NO_ENTRY);
+    ASSERT_EQ(dst_ep->recv(pdu2_key, recv_buffer, received_size), HAKO_PDU_ERR_NO_ENTRY);
+    ASSERT_EQ(dst_ep->recv(pdu3_key, recv_buffer, received_size), HAKO_PDU_ERR_NO_ENTRY);
+    ASSERT_EQ(dst_ep->recv(time_key, recv_buffer, received_size), HAKO_PDU_ERR_NO_ENTRY);
+
+    // Send the last PDU to complete the frame
+    ASSERT_EQ(src_ep->send(time_key, time_data), HAKO_PDU_ERR_OK);
+
+    // Advance time again
+    ASSERT_TRUE(bridge_core->advance_timestep());
+
+    // Assert that all PDUs are now received
+    ASSERT_EQ(dst_ep->recv(pdu1_key, recv_buffer, received_size), HAKO_PDU_ERR_OK);
+    ASSERT_EQ(received_size, pdu1_data.size());
+    recv_buffer.resize(received_size);
+    ASSERT_EQ(recv_buffer, pdu1_data);
+
+    ASSERT_EQ(dst_ep->recv(pdu2_key, recv_buffer, received_size), HAKO_PDU_ERR_OK);
+    ASSERT_EQ(received_size, pdu2_data.size());
+    recv_buffer.resize(received_size);
+    ASSERT_EQ(recv_buffer, pdu2_data);
+
+    ASSERT_EQ(dst_ep->recv(pdu3_key, recv_buffer, received_size), HAKO_PDU_ERR_OK);
+    ASSERT_EQ(received_size, pdu3_data.size());
+    recv_buffer.resize(received_size);
+    ASSERT_EQ(recv_buffer, pdu3_data);
+
+    ASSERT_EQ(dst_ep->recv(time_key, recv_buffer, received_size), HAKO_PDU_ERR_OK);
+    ASSERT_EQ(received_size, time_data.size());
+    recv_buffer.resize(received_size);
+    ASSERT_EQ(recv_buffer, time_data);
+}
+
 }

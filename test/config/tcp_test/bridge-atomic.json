@@ -1,0 +1,61 @@
+{
+    "version": "2.0.0",
+    "time_source_type": "virtual",
+    "transferPolicies": {
+      "immediate_policy": {
+        "type": "immediate",
+        "atomic": true
+      }
+    },
+    "nodes": [
+      { "id": "node1" },
+      { "id": "node2" }
+    ],
+    "endpoints": [
+      {
+        "nodeId": "node1",
+        "endpoints": [
+          { "id": "n1-src", "mode": "local", "config_path": "test/config/tcp_test/client_ep_src.json", "direction": "out" },
+          { "id": "n1-dst", "mode": "wire", "config_path": "test/config/tcp_test/client_ep_dst.json", "direction": "in" }
+        ]
+      },
+      {
+        "nodeId": "node2",
+        "endpoints": [
+          { "id": "n2-src", "mode": "wire", "config_path": "test/config/tcp_test/server_ep_src.json", "direction": "in" },
+          { "id": "n2-dst", "mode": "local", "config_path": "test/config/tcp_test/server_ep_dst.json", "direction": "out" }
+        ]
+      }
+    ],
+    "wireLinks": [
+      { "from": "n1-dst", "to": "n2-src" }
+    ],
+    "pduKeyGroups": {
+      "pdu_group": [
+        { "id": "Test.pdu1", "robot_name": "Test", "pdu_name": "pdu1" },
+        { "id": "Test.pdu2", "robot_name": "Test", "pdu_name": "pdu2" },
+        { "id": "Test.pdu3", "robot_name": "Test", "pdu_name": "pdu3" },
+        { "id": "SimTime.pdu", "robot_name": "SimTime", "pdu_name": "pdu" }
+      ]
+    },
+    "connections": [
+      {
+        "id": "node1_to_node2_conn",
+        "nodeId": "node1",
+        "source": { "endpointId": "n1-src" },
+        "destinations": [{ "endpointId": "n1-dst" }],
+        "transferPdus": [
+          { "pduKeyGroupId": "pdu_group", "policyId": "immediate_policy" }
+        ]
+      },
+      {
+        "id": "node2_from_node1_conn",
+        "nodeId": "node2",
+        "source": { "endpointId": "n2-src" },
+        "destinations": [{ "endpointId": "n2-dst" }],
+        "transferPdus": [
+          { "pduKeyGroupId": "pdu_group", "policyId": "immediate_policy" }
+        ]
+      }
+    ]
+}

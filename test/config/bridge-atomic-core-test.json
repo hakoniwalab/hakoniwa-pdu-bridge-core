@@ -1,0 +1,33 @@
+{
+    "version": "2.0.0",
+    "time_source_type": "virtual",
+    "transferPolicies": {
+      "atomic_policy": {
+        "type": "immediate",
+        "atomic": true
+      }
+    },
+    "nodes": [
+      { "id": "node1" }
+    ],
+   "endpoints_config_path": "atmoic_endpoints.json",
+    "pduKeyGroups": {
+      "atomic_group": [
+        { "id": "Test.pdu1", "robot_name": "Test", "pdu_name": "pdu1" },
+        { "id": "Test.pdu2", "robot_name": "Test", "pdu_name": "pdu2" },
+        { "id": "Test.pdu3", "robot_name": "Test", "pdu_name": "pdu3" },
+        { "id": "SimTime.pdu", "robot_name": "SimTime", "pdu_name": "pdu" }
+      ]
+    },
+    "connections": [
+      {
+        "id": "node1_conn",
+        "nodeId": "node1",
+        "source": { "endpointId": "n1-epSrc" },
+        "destinations": [{ "endpointId": "n1-epDst" }],
+        "transferPdus": [
+          { "pduKeyGroupId": "atomic_group", "policyId": "atomic_policy" }
+        ]
+      }
+    ]
+}
