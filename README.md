@@ -164,6 +164,10 @@ atomic: true を使用する場合、transferPdus には 必ず箱庭時刻を�
 
 - PDU 型： hako_msgs/SimTime
 
+また、箱庭PDUエンドポイントの通信では、データロストは許容されないため、ストリーム型 PDU エンドポイントを使用してください。
+
+> 例：TCP, WebSocket, Zenoh, MQTT など
+
 これにより、
 - フレーム単位での PDU 受信
 - フレームに付与された T_frame
