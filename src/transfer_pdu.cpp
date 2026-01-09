@@ -23,7 +23,13 @@ hakoniwa::pdu::bridge::TransferPdu::TransferPdu(
     }
     if (!policy_->is_cyclic_trigger()) {
         // Register callback for non-cyclic triggers
-        src_endpoint_->set_on_recv_callback(
+        auto channel_id = src->get_pdu_channel_id(endpoint_pdu_key_);
+        PduResolvedKey pdu_resolved_key{
+            .robot = endpoint_pdu_key_.robot,
+            .channel_id = channel_id
+        };
+        src_endpoint_->subscribe_on_recv_callback(
+            pdu_resolved_key,
             [this](const hakoniwa::pdu::PduResolvedKey& pdu_key, std::span<const std::byte> data) {
                 this->on_recv_callback(pdu_key, data);
             }

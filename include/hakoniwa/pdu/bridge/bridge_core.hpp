@@ -38,7 +38,6 @@ public:
 
 private:
     std::string node_name_;
-    std::map<std::string, std::shared_ptr<hakoniwa::pdu::Endpoint>>  endpoint_maps_;
     std::vector<std::unique_ptr<BridgeConnection>> connections_;
     std::atomic<bool> is_running_;
     std::shared_ptr<hakoniwa::time_source::ITimeSource> time_source_;
