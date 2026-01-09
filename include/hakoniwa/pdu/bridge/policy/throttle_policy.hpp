@@ -11,8 +11,8 @@ class ThrottlePolicy : public IPduTransferPolicy {
 public:
     explicit ThrottlePolicy(uint64_t interval_microseconds);
 
-    bool should_transfer(const std::shared_ptr<hakoniwa::time_source::ITimeSource>& time_source) override;
-    void on_transferred(const std::shared_ptr<hakoniwa::time_source::ITimeSource>& time_source) override;
+    bool should_transfer(const PduResolvedKey& pdu_key, const std::shared_ptr<hakoniwa::time_source::ITimeSource>& time_source) override;
+    void on_transferred(const PduResolvedKey& pdu_key, const std::shared_ptr<hakoniwa::time_source::ITimeSource>& time_source) override;
     bool is_cyclic_trigger() const override { return false; }
 
 private:

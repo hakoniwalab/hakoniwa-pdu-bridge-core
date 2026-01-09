@@ -35,6 +35,10 @@ hakoniwa::pdu::bridge::TransferPdu::TransferPdu(
             }
         );
     }
+    endpoint_pdu_resolved_key_ = {
+        .robot = endpoint_pdu_key_.robot,
+        .channel_id = src->get_pdu_channel_id(endpoint_pdu_key_)
+    };
 }
 
 void hakoniwa::pdu::bridge::TransferPdu::set_active(bool is_active) {
@@ -49,9 +53,9 @@ void hakoniwa::pdu::bridge::TransferPdu::try_transfer() {
     if (!is_active_) {
         return;
     }
-    if (policy_->should_transfer(time_source_)) {
+    if (policy_->should_transfer(endpoint_pdu_resolved_key_, time_source_)) {
         transfer();
-        policy_->on_transferred(time_source_);
+        policy_->on_transferred(endpoint_pdu_resolved_key_, time_source_);
     }
 }
 
@@ -118,5 +122,117 @@ bool hakoniwa::pdu::bridge::TransferPdu::accept_epoch(uint64_t pdu_epoch) {
     // Per impl-design.md, the receiver should discard PDUs from older epochs.
     // The `owner_epoch_` represents the current valid epoch for this node.
     return pdu_epoch >= owner_epoch_;
+}
+
+
+// Implementation of TransferAtomicPduGroup
+hakoniwa::pdu::bridge::TransferAtomicPduGroup::TransferAtomicPduGroup(
+    const std::vector<hakoniwa::pdu::bridge::PduKey>& config_keys,
+    std::shared_ptr<IPduTransferPolicy> policy,
+    std::shared_ptr<hakoniwa::time_source::ITimeSource> time_source,
+    std::shared_ptr<hakoniwa::pdu::Endpoint> src,
+    std::shared_ptr<hakoniwa::pdu::Endpoint> dst)
+    : policy_(policy),
+      time_source_(time_source),
+      src_endpoint_(src),
+      dst_endpoint_(dst),
+      is_active_(true),
+      owner_epoch_(0)
+{
+    if (!src || !dst) {
+        throw std::runtime_error("TransferAtomicPduGroup: Source or Destination endpoint is null.");
+    }
+
+    // If the real policy is event-driven, the group must subscribe to the events.
+    if (!policy_->is_cyclic_trigger()) {
+        throw std::runtime_error("TransferAtomicPduGroup: Event-driven policies are not supported for atomic groups.");
+    }
+    for (const auto& key : config_keys) {
+            auto channel_id = src->get_pdu_channel_id({key.robot_name, key.pdu_name});
+            PduResolvedKey pdu_resolved_key{
+            .robot = key.robot_name,
+            .channel_id = channel_id
+        };
+        transfer_atomic_pdu_group_.emplace_back(std::make_unique<hakoniwa::pdu::PduResolvedKey>(pdu_resolved_key));
+        src_endpoint_->subscribe_on_recv_callback(
+            pdu_resolved_key,
+            [this](const hakoniwa::pdu::PduResolvedKey& pdu_key, std::span<const std::byte> data) {
+                this->on_recv_callback(pdu_key, data);
+            }
+        );
+    }
+}
+
+void hakoniwa::pdu::bridge::TransferAtomicPduGroup::set_active(bool is_active)
+{
+    //TODO
+}
+
+void hakoniwa::pdu::bridge::TransferAtomicPduGroup::set_epoch(uint64_t epoch)
+{
+    //TODO
+}
+
+void hakoniwa::pdu::bridge::TransferAtomicPduGroup::cyclic_trigger()
+{
+    throw std::runtime_error("TransferAtomicPduGroup: cyclic_trigger should not be called directly.");
+}
+
+void hakoniwa::pdu::bridge::TransferAtomicPduGroup::try_transfer(
+    const hakoniwa::pdu::PduResolvedKey& pdu_key, std::span<const std::byte> data)
+{
+    (void)pdu_key; // Not used in this context as we transfer the whole group
+    (void)data;    // Not used
+    if (!is_active_) {
+        return;
+    }
+    // For event-driven policies, should_transfer is the only gate.
+    if (policy_->should_transfer(pdu_key, time_source_)) {
+        try_transfer_group();
+        policy_->on_transferred(pdu_key, time_source_);
+    }
+}
+
+void hakoniwa::pdu::bridge::TransferAtomicPduGroup::try_transfer_group()
+{
+    for (auto& pdu_resolved_key : transfer_atomic_pdu_group_) {
+        //read pdu
+        std::string pdu_name = src_endpoint_->get_pdu_name(*pdu_resolved_key);
+        size_t pdu_size = src_endpoint_->get_pdu_size(
+            {pdu_resolved_key->robot, pdu_name}
+        );
+        if (pdu_size == 0) {
+            std::cerr << "ERROR: PDU size is 0 for " << pdu_resolved_key->robot 
+                      << "." << pdu_name << ". Skipping transfer." << std::endl;
+            continue;
+        }
+        std::vector<std::byte> buffer(pdu_size); // Use std::byte for raw PDU data
+        size_t received_size = 0;
+        // Read from source endpoint
+        HakoPduErrorType read_err = src_endpoint_->recv(
+            *pdu_resolved_key, std::span<std::byte>(buffer), received_size
+        );
+        if (read_err != HAKO_PDU_ERR_OK) {
+            std::cerr << "ERROR: Failed to read PDU " << pdu_resolved_key->robot 
+                      << "." << pdu_name << " from source: " << read_err << std::endl;
+            continue;
+        }
+        if (received_size != pdu_size) {
+             std::cerr << "WARNING: PDU " << pdu_resolved_key->robot 
+                      << "." << pdu_name << " read " << received_size 
+                      << " bytes, expected " << pdu_size << std::endl;
+            continue;
+        }
+        // write to destination endpoint
+        HakoPduErrorType write_err = dst_endpoint_->send(
+            *pdu_resolved_key, std::span<const std::byte>(buffer)
+        );
+        if (write_err != HAKO_PDU_ERR_OK) {
+            std::cerr << "ERROR: Failed to write PDU " << pdu_resolved_key->robot 
+                      << "." << pdu_name << " to destination: " << write_err << std::endl;
+            continue;
+        }
+    }
+
 }
 

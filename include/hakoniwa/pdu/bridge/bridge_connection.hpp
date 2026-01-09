@@ -15,13 +15,13 @@ public:
 
     const std::string& getNodeId() const { return node_id_; }
 
-    void add_transfer_pdu(std::unique_ptr<TransferPdu> pdu);
+    void add_transfer_pdu(std::unique_ptr<ITransferPdu> pdu);
 
     void cyclic_trigger();
 
 private:
     std::string node_id_;
-    std::vector<std::unique_ptr<TransferPdu>> transfer_pdus_;
+    std::vector<std::unique_ptr<ITransferPdu>> transfer_pdus_;
 };
 
 } // namespace hakoniwa::pdu::bridge

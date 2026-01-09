@@ -3,7 +3,7 @@
 
 namespace hakoniwa::pdu::bridge {
 
-void BridgeConnection::add_transfer_pdu(std::unique_ptr<TransferPdu> pdu) {
+void BridgeConnection::add_transfer_pdu(std::unique_ptr<ITransferPdu> pdu) {
     transfer_pdus_.push_back(std::move(pdu));
 }
 
