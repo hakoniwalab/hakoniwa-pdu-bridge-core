@@ -17,17 +17,23 @@ namespace {
 
 TEST(BridgeCoreFlowTest, ImmediatePolicyFlow) {
     // 1. Setup
-    auto result = hakoniwa::pdu::bridge::build(config_path("bridge-core-flow-test.json"), "node1", 1000);
+    std::shared_ptr<hakoniwa::pdu::EndpointContainer> endpoint_container = 
+        std::make_shared<hakoniwa::pdu::EndpointContainer>("node1", config_path("endpoint_container.json"));
+    HakoPduErrorType init_ret = endpoint_container->initialize();
+    ASSERT_EQ(init_ret, HAKO_PDU_ERR_OK);
+
+    auto result = hakoniwa::pdu::bridge::build(config_path("bridge-core-flow-test.json"), "node1", 1000, endpoint_container);
     auto bridge_core = std::move(result.core);
-    auto endpoints = result.endpoints;
 
     ASSERT_TRUE(bridge_core != nullptr);
-    ASSERT_EQ(endpoints.size(), 2U);
+    ASSERT_EQ(endpoint_container->list_endpoint_ids().size(), 2U);
+
+    ASSERT_EQ(endpoint_container->start_all(), HAKO_PDU_ERR_OK);
 
     bridge_core->start();
 
-    auto src_ep = endpoints.at("n1-epSrc");
-    auto dst_ep = endpoints.at("n1-epDst");
+    auto src_ep = endpoint_container->ref("n1-epSrc");
+    auto dst_ep = endpoint_container->ref("n1-epDst");
 
     // 2. Execution
     hakoniwa::pdu::PduKey key = {"Drone", "pos"};

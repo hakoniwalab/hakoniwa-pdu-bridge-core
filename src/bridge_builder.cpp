@@ -1,4 +1,5 @@
 #include "hakoniwa/pdu/bridge/bridge_types.hpp"
+#include "hakoniwa/pdu/endpoint_container.hpp"
 #include "hakoniwa/pdu/bridge/bridge_core.hpp"
 #include "hakoniwa/pdu/bridge/bridge_build_result.hpp"
 #include "hakoniwa/pdu/bridge/policy/immediate_policy.hpp"
@@ -37,7 +38,7 @@ namespace hakoniwa::pdu::bridge {
         ifs >> j;
         return j.get<BridgeConfig>();
     }
-    BridgeBuildResult build(const std::string& config_file_path, const std::string& node_name, uint64_t delta_time_step_usec)
+    BridgeBuildResult build(const std::string& config_file_path, const std::string& node_name, uint64_t delta_time_step_usec, std::shared_ptr<hakoniwa::pdu::EndpointContainer> endpoint_container)
     {
         fs::path bridge_path(config_file_path);
         fs::path base_dir = bridge_path.parent_path();
@@ -78,45 +79,6 @@ namespace hakoniwa::pdu::bridge {
         }
 
         /*
-         * endpoint section
-         */
-        std::map<std::string, std::shared_ptr<hakoniwa::pdu::Endpoint>> endpoints_by_id;
-
-        for (const auto& node_eps : bridge_config.endpoints) {
-            if (node_eps.nodeId != node_name) continue;
-
-            for (const auto& ep_def : node_eps.endpoints) {
-                // Safety: disallow duplicate IDs
-                if (endpoints_by_id.contains(ep_def.id)) {
-                    throw std::runtime_error("Duplicate endpoint id: " + ep_def.id);
-                }
-                HakoPduEndpointDirectionType direction;
-                if (ep_def.direction == "in") {
-                    direction = HAKO_PDU_ENDPOINT_DIRECTION_IN;
-                } else if (ep_def.direction == "out") {
-                    direction = HAKO_PDU_ENDPOINT_DIRECTION_OUT;
-                } else if (ep_def.direction == "inout") {
-                    direction = HAKO_PDU_ENDPOINT_DIRECTION_INOUT;
-                } else {
-                    throw std::runtime_error("Invalid endpoint direction: " + ep_def.direction);
-                }
-                auto endpoint = std::make_shared<hakoniwa::pdu::Endpoint>(
-                    ep_def.id, direction
-                );
-                auto resolved_ep_path = resolve_under_base(base_dir, ep_def.config_path);
-                HakoPduErrorType err = endpoint->open(resolved_ep_path.string());
-                if (err != HAKO_PDU_ERR_OK) {
-                    throw std::runtime_error(
-                        "BridgeLoader: Failed to open endpoint config " + ep_def.config_path +
-                        ": " + std::to_string(err)
-                    );
-                }
-                endpoints_by_id[ep_def.id] = std::move(endpoint);
-            }
-        }
-        core->set_endpoint_maps(endpoints_by_id);
-
-        /*
          * TransferPdu && connection section
          */
         for (const auto& conn_def : bridge_config.connections) {
@@ -125,15 +87,16 @@ namespace hakoniwa::pdu::bridge {
             }
             auto connection = std::make_unique<BridgeConnection>(conn_def.id);
             
-            auto src_ep_it = endpoints_by_id.find(conn_def.source.endpointId);
-            if (src_ep_it == endpoints_by_id.end()) throw std::runtime_error("Source endpoint not found: " + conn_def.source.endpointId);
-            std::shared_ptr<hakoniwa::pdu::Endpoint> src_ep = src_ep_it->second;
-            
+            std::shared_ptr<hakoniwa::pdu::Endpoint> src_ep = endpoint_container->ref(conn_def.source.endpointId);
+            if (!src_ep) {
+                throw std::runtime_error("Source endpoint not found: " + conn_def.source.endpointId);
+            }
 
             for (const auto& dest_def : conn_def.destinations) {
-                auto dst_ep_it = endpoints_by_id.find(dest_def.endpointId);
-                if (dst_ep_it == endpoints_by_id.end()) throw std::runtime_error("Destination endpoint not found: " + dest_def.endpointId);
-                std::shared_ptr<hakoniwa::pdu::Endpoint> dst_ep = dst_ep_it->second;
+                std::shared_ptr<hakoniwa::pdu::Endpoint> dst_ep = endpoint_container->ref(dest_def.endpointId);
+                if (!dst_ep) {
+                    throw std::runtime_error("Destination endpoint not found: " + dest_def.endpointId);
+                }
 
                 for (const auto& trans_pdu_def : conn_def.transferPdus) {
                     auto pit = policy_map.find(trans_pdu_def.policyId);
@@ -152,7 +115,7 @@ namespace hakoniwa::pdu::bridge {
             }
             core->add_connection(std::move(connection));
         }
-        return { std::move(core), endpoints_by_id };
+        return { std::move(core) };
     }
 
 }

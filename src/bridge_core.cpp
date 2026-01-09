@@ -21,12 +21,6 @@ void BridgeCore::start() {
         // Already running in another thread.
         return;
     }
-    for (auto& endpoint: endpoint_maps_) {
-        HakoPduErrorType err = endpoint.second->start();
-        if (err != HAKO_PDU_ERR_OK) {
-            throw std::runtime_error("Failed to start endpoint: " + endpoint.first);
-        }
-    }
 }
 
 bool BridgeCore::advance_timestep() {

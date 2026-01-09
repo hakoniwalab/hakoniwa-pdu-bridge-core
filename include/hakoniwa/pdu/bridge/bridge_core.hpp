@@ -15,10 +15,6 @@ public:
     ~BridgeCore() = default;
 
     void add_connection(std::unique_ptr<BridgeConnection> connection);
-    void set_endpoint_maps(std::map<std::string, std::shared_ptr<hakoniwa::pdu::Endpoint>> endpoint)
-    {
-        endpoint_maps_ = std::move(endpoint);
-    }
     uint64_t get_delta_time_microseconds() const
     {
         return time_source_->get_delta_time_microseconds();
@@ -30,13 +26,6 @@ public:
     {
         if (!is_running_) {
             return false;
-        }
-        for (const auto& endpoint: endpoint_maps_) {
-            bool ep_running = false;
-            endpoint.second->is_running(ep_running);
-            if (!ep_running) {
-                return false;
-            }
         }
         return true;
     }

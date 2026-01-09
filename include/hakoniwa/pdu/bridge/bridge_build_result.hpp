@@ -10,7 +10,6 @@ namespace hakoniwa::pdu::bridge {
 
 struct BridgeBuildResult {
     std::unique_ptr<BridgeCore> core;
-    std::map<std::string, std::shared_ptr<hakoniwa::pdu::Endpoint>> endpoints;
 };
 
 } // namespace hakoniwa::pdu::bridge

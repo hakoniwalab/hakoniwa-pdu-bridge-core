@@ -1,6 +1,7 @@
 #pragma once
 
 #include "hakoniwa/pdu/bridge/bridge_types.hpp" // For BridgeConfig
+#include "hakoniwa/pdu/endpoint_container.hpp"
 #include "hakoniwa/pdu/bridge/bridge_build_result.hpp"
 #include <string>
 #include <memory>
@@ -13,6 +14,7 @@ namespace hakoniwa::pdu::bridge {
  */
 BridgeConfig parse(const std::string& config_file_path);
 
-BridgeBuildResult build(const std::string& config_file_path, const std::string& node_name, uint64_t delta_time_step_usec);
+BridgeBuildResult build(const std::string& config_file_path, const std::string& node_name, uint64_t delta_time_step_usec, 
+    std::shared_ptr<hakoniwa::pdu::EndpointContainer> endpoint_container);
 
 } // namespace hakoniwa::pdu::bridge
