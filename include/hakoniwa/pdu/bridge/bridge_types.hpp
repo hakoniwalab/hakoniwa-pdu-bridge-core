@@ -13,6 +13,7 @@ namespace hakoniwa::pdu::bridge {
 struct TransferPolicy {
     std::string type;
     std::optional<int> intervalMs;
+    std::optional<bool> atomic;
 };
 
 // from nodes
@@ -85,6 +86,9 @@ inline void from_json(const nlohmann::json& j, TransferPolicy& p) {
     j.at("type").get_to(p.type);
     if (j.contains("intervalMs")) {
         p.intervalMs = j.at("intervalMs").get<int>();
+    }
+    if (j.contains("atomic")) {
+        p.atomic = j.at("atomic").get<bool>();
     }
 }
 inline void from_json(const nlohmann::json& j, Node& n) {

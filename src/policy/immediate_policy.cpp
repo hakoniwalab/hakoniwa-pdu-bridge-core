@@ -21,7 +21,12 @@ void ImmediatePolicy::on_transferred(const PduResolvedKey& pdu_key, const std::s
     if (is_atomic_) {
         // Mark this PDU as received.
         recv_states_[{pdu_key.robot, pdu_key.channel_id}] = true;
-        // After transfer, reset all states for the next round.
+        for (auto& pair : recv_states_) {
+            if (!pair.second) {
+                return;
+            }
+        }
+        // Reset all states for the next atomic transfer.
         for (auto& pair : recv_states_) {
             pair.second = false;
         }

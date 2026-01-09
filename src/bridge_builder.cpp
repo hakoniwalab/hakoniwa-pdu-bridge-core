@@ -65,7 +65,8 @@ namespace hakoniwa::pdu::bridge {
             const auto& id = pair.first;
             const auto& policy_def = pair.second;
             if (policy_def.type == "immediate") {
-                policy_map[id] = std::make_shared<ImmediatePolicy>(false);
+                bool is_atomic = policy_def.atomic.value_or(false);
+                policy_map[id] = std::make_shared<ImmediatePolicy>(is_atomic);
             } else if (policy_def.type == "throttle") {
                 if (!policy_def.intervalMs) throw std::runtime_error("throttle policy needs intervalMs");
                 policy_map[id] = std::make_shared<ThrottlePolicy>(static_cast<uint64_t>(*policy_def.intervalMs) * 1000); // Convert to microseconds
