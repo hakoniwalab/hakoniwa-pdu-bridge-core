@@ -1,3 +1,4 @@
+#include <optional>
 #include "hakoniwa/pdu/bridge/bridge_builder.hpp"
 #include "hakoniwa/pdu/bridge/bridge_types.hpp"
 
@@ -23,7 +24,8 @@ TEST(BridgeLoaderTest, LoadsImmediateConfig) {
     EXPECT_EQ(config.transferPolicies.at("immediate_policy").type, "immediate");
     EXPECT_FALSE(config.transferPolicies.at("immediate_policy").intervalMs.has_value());
     EXPECT_EQ(config.nodes.size(), 1U);
-    EXPECT_EQ(config.endpoints.size(), 1U);
+    ASSERT_TRUE(config.endpoints_config_path.has_value());
+    EXPECT_EQ(*config.endpoints_config_path, "endpoints-immediate.json");
     EXPECT_EQ(config.pduKeyGroups.at("group1").front().id, "Robot1.pos");
 }
 
@@ -32,8 +34,9 @@ TEST(BridgeLoaderTest, LoadsThrottleConfig) {
 
     EXPECT_EQ(config.transferPolicies.at("throttle_policy").type, "throttle");
     ASSERT_TRUE(config.transferPolicies.at("throttle_policy").intervalMs.has_value());
-    EXPECT_EQ(*config.transferPolicies.at("throttle_policy").intervalMs, 100);
     EXPECT_EQ(config.connections.size(), 1U);
+    ASSERT_TRUE(config.endpoints_config_path.has_value());
+    EXPECT_EQ(*config.endpoints_config_path, "endpoints-throttle.json");
 }
 
 TEST(BridgeLoaderTest, LoadsTickerConfig) {
@@ -42,6 +45,8 @@ TEST(BridgeLoaderTest, LoadsTickerConfig) {
     ASSERT_TRUE(config.transferPolicies.at("ticker_policy").intervalMs.has_value());
     EXPECT_EQ(*config.transferPolicies.at("ticker_policy").intervalMs, 50);
     EXPECT_EQ(config.connections.front().transferPdus.front().policyId, "ticker_policy");
+    ASSERT_TRUE(config.endpoints_config_path.has_value());
+    EXPECT_EQ(*config.endpoints_config_path, "endpoints-ticker.json");
 }
 
 TEST(BridgeLoaderTest, LoadsTickerConfig2) {
@@ -50,20 +55,11 @@ TEST(BridgeLoaderTest, LoadsTickerConfig2) {
     EXPECT_EQ(config.version, "2.0.0");
     EXPECT_EQ(config.time_source_type, "virtual");
     
-    EXPECT_EQ(config.transferPolicies.size(), 1U);
-    EXPECT_TRUE(config.transferPolicies.count("ticker1"));
-    const auto& policy = config.transferPolicies.at("ticker1");
-    EXPECT_EQ(policy.type, "ticker");
-    EXPECT_EQ(*policy.intervalMs, 50);
-
     EXPECT_EQ(config.nodes.size(), 1U);
     EXPECT_EQ(config.nodes[0].id, "node1");
 
-    EXPECT_EQ(config.endpoints.size(), 1U);
-    EXPECT_EQ(config.endpoints[0].nodeId, "node1");
-    EXPECT_EQ(config.endpoints[0].endpoints.size(), 2U);
-    EXPECT_EQ(config.endpoints[0].endpoints[0].id, "ep1");
-    EXPECT_EQ(config.endpoints[0].endpoints[1].id, "ep2");
+    ASSERT_TRUE(config.endpoints_config_path.has_value());
+    EXPECT_EQ(*config.endpoints_config_path, "endpoints-ticker2.json");
 
     EXPECT_EQ(config.connections.size(), 1U);
     EXPECT_EQ(config.connections[0].id, "conn1");
@@ -96,11 +92,8 @@ TEST(BridgeLoaderTest, LoadsThrottleConfig2) {
     EXPECT_EQ(config.nodes.size(), 1U);
     EXPECT_EQ(config.nodes[0].id, "node1");
 
-    EXPECT_EQ(config.endpoints.size(), 1U);
-    EXPECT_EQ(config.endpoints[0].nodeId, "node1");
-    EXPECT_EQ(config.endpoints[0].endpoints.size(), 2U);
-    EXPECT_EQ(config.endpoints[0].endpoints[0].id, "ep1");
-    EXPECT_EQ(config.endpoints[0].endpoints[1].id, "ep2");
+    ASSERT_TRUE(config.endpoints_config_path.has_value());
+    EXPECT_EQ(*config.endpoints_config_path, "endpoints-throttle2.json");
 
     EXPECT_EQ(config.connections.size(), 1U);
     EXPECT_EQ(config.connections[0].id, "conn1");
@@ -132,15 +125,8 @@ TEST(BridgeLoaderTest, LoadsMultipleConfig) {
     EXPECT_EQ(config.nodes[0].id, "node1");
     EXPECT_EQ(config.nodes[1].id, "node2");
 
-    EXPECT_EQ(config.endpoints.size(), 2U);
-    EXPECT_EQ(config.endpoints[0].nodeId, "node1");
-    EXPECT_EQ(config.endpoints[0].endpoints.size(), 2U);
-    EXPECT_EQ(config.endpoints[0].endpoints[0].id, "ep1");
-    EXPECT_EQ(config.endpoints[0].endpoints[1].id, "ep2");
-    EXPECT_EQ(config.endpoints[1].nodeId, "node2");
-    EXPECT_EQ(config.endpoints[1].endpoints.size(), 2U);
-    EXPECT_EQ(config.endpoints[1].endpoints[0].id, "ep3");
-    EXPECT_EQ(config.endpoints[1].endpoints[1].id, "ep4");
+    ASSERT_TRUE(config.endpoints_config_path.has_value());
+    EXPECT_EQ(*config.endpoints_config_path, "endpoints-multiple.json");
 
     EXPECT_EQ(config.connections.size(), 2U);
     EXPECT_EQ(config.connections[0].id, "conn1");

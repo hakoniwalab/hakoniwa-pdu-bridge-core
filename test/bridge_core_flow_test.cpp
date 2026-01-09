@@ -18,7 +18,7 @@ namespace {
 TEST(BridgeCoreFlowTest, ImmediatePolicyFlow) {
     // 1. Setup
     std::shared_ptr<hakoniwa::pdu::EndpointContainer> endpoint_container = 
-        std::make_shared<hakoniwa::pdu::EndpointContainer>("node1", config_path("endpoint_container.json"));
+        std::make_shared<hakoniwa::pdu::EndpointContainer>("node1", config_path("endpoints.json"));
     HakoPduErrorType init_ret = endpoint_container->initialize();
     ASSERT_EQ(init_ret, HAKO_PDU_ERR_OK);
 

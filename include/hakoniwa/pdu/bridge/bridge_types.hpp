@@ -74,7 +74,7 @@ struct BridgeConfig {
     std::string time_source_type; // New field
     std::map<std::string, TransferPolicy> transferPolicies;
     std::vector<Node> nodes;
-    std::vector<NodeEndpoints> endpoints;
+    std::optional<std::string> endpoints_config_path;
     std::vector<WireLink> wireLinks;
     std::map<std::string, std::vector<PduKey>> pduKeyGroups;
     std::vector<Connection> connections;
@@ -131,7 +131,9 @@ inline void from_json(const nlohmann::json& j, BridgeConfig& b) {
     j.at("time_source_type").get_to(b.time_source_type); // Parse new field
     j.at("transferPolicies").get_to(b.transferPolicies);
     j.at("nodes").get_to(b.nodes);
-    j.at("endpoints").get_to(b.endpoints);
+    if (j.contains("endpoints_config_path")) {
+        b.endpoints_config_path = j.at("endpoints_config_path").get<std::string>();
+    }
     if (j.contains("wireLinks")) {
         j.at("wireLinks").get_to(b.wireLinks);
     }

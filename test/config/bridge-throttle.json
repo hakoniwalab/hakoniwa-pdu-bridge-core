@@ -7,15 +7,7 @@
   "nodes": [
     { "id": "node1" }
   ],
-  "endpoints": [
-    {
-      "nodeId": "node1",
-      "endpoints": [
-        { "id": "node1-src", "mode": "local", "config_path": "config/endpoint1.json", "direction": "out" },
-        { "id": "node1-dst", "mode": "wire", "config_path": "config/endpoint2.json", "direction": "in" }
-      ]
-    }
-  ],
+  "endpoints_config_path": "endpoints-throttle.json",
   "wireLinks": [],
   "pduKeyGroups": {
     "group1": [

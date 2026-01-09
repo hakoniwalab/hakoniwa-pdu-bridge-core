@@ -1,6 +1,7 @@
 #include "hakoniwa/pdu/bridge/bridge_builder.hpp"
 #include "hakoniwa/pdu/bridge/bridge_core.hpp"
 #include "hakoniwa/pdu/endpoint.hpp"
+#include "hakoniwa/pdu/endpoint_container.hpp"
 #include <gtest/gtest.h>
 #include <filesystem>
 #include <string>
@@ -19,16 +20,27 @@ namespace {
 
 TEST(BridgeTcpFlowTest, ImmediatePolicyCrossNode) {
     // 1. Setup
-    auto server_result = hakoniwa::pdu::bridge::build(tcp_test_config_path("bridge.json"), "node2", 1000);
-    auto client_result = hakoniwa::pdu::bridge::build(tcp_test_config_path("bridge.json"), "node1", 1000);
+    auto server_endpoint_container = std::make_shared<hakoniwa::pdu::EndpointContainer>("node2", tcp_test_config_path("endpoints.json"));
+    ASSERT_EQ(server_endpoint_container->initialize(), HAKO_PDU_ERR_OK);
+    auto client_endpoint_container = std::make_shared<hakoniwa::pdu::EndpointContainer>("node1", tcp_test_config_path("endpoints.json"));
+    ASSERT_EQ(client_endpoint_container->initialize(), HAKO_PDU_ERR_OK);
+
+    auto server_result = hakoniwa::pdu::bridge::build(tcp_test_config_path("bridge.json"), "node2", 1000, server_endpoint_container);
+    auto client_result = hakoniwa::pdu::bridge::build(tcp_test_config_path("bridge.json"), "node1", 1000, client_endpoint_container);
 
     auto server_core = std::move(server_result.core);
-    auto server_endpoints = server_result.endpoints;
     auto client_core = std::move(client_result.core);
-    auto client_endpoints = client_result.endpoints;
 
     ASSERT_TRUE(server_core != nullptr);
     ASSERT_TRUE(client_core != nullptr);
+
+    ASSERT_EQ(server_endpoint_container->start_all(), HAKO_PDU_ERR_OK);
+    ASSERT_EQ(client_endpoint_container->start_all(), HAKO_PDU_ERR_OK);
+
+    while (server_endpoint_container->is_running_all() == false ||
+           client_endpoint_container->is_running_all() == false) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
 
     // Start server first
     server_core->start();
@@ -40,8 +52,8 @@ TEST(BridgeTcpFlowTest, ImmediatePolicyCrossNode) {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
-    auto src_ep = client_endpoints.at("epA_src");
-    auto dst_ep = server_endpoints.at("epB_dst");
+    auto src_ep = client_endpoint_container->ref("epA_src");
+    auto dst_ep = server_endpoint_container->ref("epB_dst");
 
     // 2. Execution
     hakoniwa::pdu::PduKey key = {"Drone", "pos"};

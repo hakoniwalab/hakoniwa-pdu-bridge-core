@@ -8,22 +8,7 @@
         { "id": "node1" },
         { "id": "node2" }
     ],
-    "endpoints": [
-        {
-            "nodeId": "node1",
-            "endpoints": [
-                { "id": "epA_src", "mode": "local", "config_path": "ep_local_src.json", "direction": "out" },
-                { "id": "epA_dst_wire", "mode": "wire", "config_path": "ep_wire_client.json", "direction": "out" }
-            ]
-        },
-        {
-            "nodeId": "node2",
-            "endpoints": [
-                { "id": "epB_src_wire", "mode": "wire", "config_path": "ep_wire_server.json", "direction": "in" },
-                { "id": "epB_dst", "mode": "local", "config_path": "ep_local_dst.json", "direction": "in" }
-            ]
-        }
-    ],
+    "endpoints_config_path": "endpoints.json",
     "wireLinks": [
         { "from": "epA_dst_wire", "to": "epB_src_wire" }
     ],
