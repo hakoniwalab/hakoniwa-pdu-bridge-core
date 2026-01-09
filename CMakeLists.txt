@@ -35,8 +35,15 @@ endif()
 target_link_libraries(hakoniwa_pdu_bridge_lib PUBLIC hakoniwa_pdu_endpoint nlohmann_json::nlohmann_json)
 
 # Link our bridge executable against the created library
-target_link_libraries(hakoniwa-pdu-bridge PRIVATE hakoniwa_pdu_bridge_lib)
-
+target_link_libraries(hakoniwa-pdu-bridge 
+  PRIVATE 
+  hakoniwa_pdu_bridge_lib
+  shakoc
+)
+target_link_directories(hakoniwa-pdu-bridge 
+  PRIVATE
+    /usr/local/hakoniwa/lib
+)
 # Enable testing
 enable_testing()
 

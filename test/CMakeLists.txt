@@ -22,6 +22,11 @@ target_link_libraries(hakoniwa_pdu_bridge_tests
     PRIVATE
         hakoniwa_pdu_bridge_lib
         GTest::gtest_main
+        shakoc
+)
+target_link_directories(hakoniwa_pdu_bridge_tests 
+  PRIVATE
+    /usr/local/hakoniwa/lib
 )
 
 add_test(NAME hakoniwa_pdu_bridge_tests COMMAND hakoniwa_pdu_bridge_tests)
