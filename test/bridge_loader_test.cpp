@@ -16,7 +16,9 @@ std::string config_path(const std::string& filename) {
 } // namespace
 
 TEST(BridgeLoaderTest, LoadsImmediateConfig) {
-    BridgeConfig config = hakoniwa::pdu::bridge::parse(config_path("bridge-immediate.json"));
+    std::string error_message;
+    auto config_ = hakoniwa::pdu::bridge::parse(config_path("bridge-immediate.json"), error_message);
+    BridgeConfig config = *config_;
 
     EXPECT_EQ(config.version, "2.0.0");
     EXPECT_EQ(config.time_source_type, "virtual");
@@ -30,7 +32,9 @@ TEST(BridgeLoaderTest, LoadsImmediateConfig) {
 }
 
 TEST(BridgeLoaderTest, LoadsThrottleConfig) {
-    BridgeConfig config = hakoniwa::pdu::bridge::parse(config_path("bridge-throttle.json"));
+    std::string error_message;
+    auto config_ = hakoniwa::pdu::bridge::parse(config_path("bridge-throttle.json"), error_message);
+    BridgeConfig config = *config_;
 
     EXPECT_EQ(config.transferPolicies.at("throttle_policy").type, "throttle");
     ASSERT_TRUE(config.transferPolicies.at("throttle_policy").intervalMs.has_value());
@@ -40,7 +44,10 @@ TEST(BridgeLoaderTest, LoadsThrottleConfig) {
 }
 
 TEST(BridgeLoaderTest, LoadsTickerConfig) {
-    BridgeConfig config = hakoniwa::pdu::bridge::parse(config_path("bridge-ticker.json"));
+    std::string error_message;
+    auto config_ = hakoniwa::pdu::bridge::parse(config_path("bridge-ticker.json"), error_message);
+    BridgeConfig config = *config_;
+
     EXPECT_EQ(config.transferPolicies.at("ticker_policy").type, "ticker");
     ASSERT_TRUE(config.transferPolicies.at("ticker_policy").intervalMs.has_value());
     EXPECT_EQ(*config.transferPolicies.at("ticker_policy").intervalMs, 50);
@@ -50,7 +57,9 @@ TEST(BridgeLoaderTest, LoadsTickerConfig) {
 }
 
 TEST(BridgeLoaderTest, LoadsTickerConfig2) {
-    BridgeConfig config =  hakoniwa::pdu::bridge::parse(config_path("bridge-ticker2.json"));
+    std::string error_message;
+    auto config_ = hakoniwa::pdu::bridge::parse(config_path("bridge-ticker2.json"), error_message);
+    BridgeConfig config = *config_;
 
     EXPECT_EQ(config.version, "2.0.0");
     EXPECT_EQ(config.time_source_type, "virtual");
@@ -78,7 +87,9 @@ TEST(BridgeLoaderTest, LoadsTickerConfig2) {
 }
 
 TEST(BridgeLoaderTest, LoadsThrottleConfig2) {
-    BridgeConfig config = hakoniwa::pdu::bridge::parse(config_path("bridge-throttle2.json"));
+    std::string error_message;
+    auto config_ = hakoniwa::pdu::bridge::parse(config_path("bridge-throttle2.json"), error_message);
+    BridgeConfig config = *config_;
 
     EXPECT_EQ(config.version, "2.0.0");
     EXPECT_EQ(config.time_source_type, "real");
@@ -112,7 +123,9 @@ TEST(BridgeLoaderTest, LoadsThrottleConfig2) {
 }
 
 TEST(BridgeLoaderTest, LoadsMultipleConfig) {
-    BridgeConfig config = hakoniwa::pdu::bridge::parse(config_path("bridge-multiple.json"));
+    std::string error_message;
+    auto config_ = hakoniwa::pdu::bridge::parse(config_path("bridge-multiple.json"), error_message);
+    BridgeConfig config = *config_;
 
     EXPECT_EQ(config.version, "2.0.0");
     EXPECT_EQ(config.time_source_type, "real");
@@ -157,7 +170,9 @@ TEST(BridgeLoaderTest, LoadsMultipleConfig) {
 }
 
 TEST(BridgeLoaderTest, LoadsInvalidConfig) {
-    ASSERT_THROW(hakoniwa::pdu::bridge::parse(config_path("bridge-invalid.json")), nlohmann::json::out_of_range);
+    std::string error_message;
+    auto config_ = hakoniwa::pdu::bridge::parse(config_path("bridge-invalid.json"), error_message);
+    ASSERT_FALSE(config_.has_value());
 }
 
 } // namespace hakoniwa::pdu::bridge::test
