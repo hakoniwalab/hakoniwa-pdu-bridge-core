@@ -12,7 +12,7 @@ namespace hakoniwa::pdu::bridge {
 /*
  * just simply, loads the config file and converts to BridgeConfig
  */
-BridgeConfig parse(const std::string& config_file_path);
+std::optional<BridgeConfig> parse(const std::string& config_file_path, std::string& error_message);
 
 BridgeBuildResult build(const std::string& config_file_path, const std::string& node_name, uint64_t delta_time_step_usec, 
     std::shared_ptr<hakoniwa::pdu::EndpointContainer> endpoint_container);

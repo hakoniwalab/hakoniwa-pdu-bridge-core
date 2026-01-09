@@ -12,7 +12,6 @@
 #include <nlohmann/json.hpp> // nlohmann/json
 
 #include <fstream>
-#include <stdexcept>
 #include <filesystem>
 namespace fs = std::filesystem;
 
@@ -28,22 +27,36 @@ namespace hakoniwa::pdu::bridge {
         return (base_dir / p).lexically_normal();
     }
 
-    // Helper to parse BridgeConfig from file
-    BridgeConfig parse(const std::string& config_path) {
+    // Helper to parse BridgeConfig from file.
+    // NOTE: JSON exceptions are caught here and converted to error_message per exception-free policy.
+    std::optional<BridgeConfig> parse(const std::string& config_path, std::string& error_message) {
         std::ifstream ifs(config_path);
         if (!ifs.is_open()) {
-            throw std::runtime_error("BridgeLoader: Failed to open bridge config file: " + config_path);
+            error_message = "BridgeLoader: Failed to open bridge config file: " + config_path;
+            return std::nullopt;
         }
-        nlohmann::json j;
-        ifs >> j;
-        return j.get<BridgeConfig>();
+        nlohmann::json j = nlohmann::json::parse(ifs, nullptr, false);
+        if (j.is_discarded()) {
+            error_message = "BridgeLoader: Failed to parse bridge config JSON: " + config_path;
+            return std::nullopt;
+        }
+        try {
+            return j.get<BridgeConfig>();
+        } catch (const std::exception& e) {
+            error_message = std::string("BridgeLoader: Failed to decode bridge config: ") + e.what();
+            return std::nullopt;
+        }
     }
     BridgeBuildResult build(const std::string& config_file_path, const std::string& node_name, uint64_t delta_time_step_usec, std::shared_ptr<hakoniwa::pdu::EndpointContainer> endpoint_container)
     {
-        fs::path bridge_path(config_file_path);
-        fs::path base_dir = bridge_path.parent_path();
-
-        BridgeConfig bridge_config = parse(config_file_path);
+        BridgeBuildResult result;
+        std::string error_message;
+        auto maybe_config = parse(config_file_path, error_message);
+        if (!maybe_config) {
+            result.error_message = std::move(error_message);
+            return result;
+        }
+        const BridgeConfig& bridge_config = *maybe_config;
 
         /*
          * time source selection
@@ -68,14 +81,21 @@ namespace hakoniwa::pdu::bridge {
                 bool is_atomic = policy_def.atomic.value_or(false);
                 policy_map[id] = std::make_shared<ImmediatePolicy>(is_atomic);
             } else if (policy_def.type == "throttle") {
-                if (!policy_def.intervalMs) throw std::runtime_error("throttle policy needs intervalMs");
+                if (!policy_def.intervalMs) {
+                    result.error_message = "BridgeLoader: throttle policy needs intervalMs";
+                    return result;
+                }
                 policy_map[id] = std::make_shared<ThrottlePolicy>(static_cast<uint64_t>(*policy_def.intervalMs) * 1000); // Convert to microseconds
             } else if (policy_def.type == "ticker") {
-                if (!policy_def.intervalMs) throw std::runtime_error("ticker policy needs intervalMs");
+                if (!policy_def.intervalMs) {
+                    result.error_message = "BridgeLoader: ticker policy needs intervalMs";
+                    return result;
+                }
                 policy_map[id] = std::make_shared<TickerPolicy>(static_cast<uint64_t>(*policy_def.intervalMs) * 1000); // Convert to microseconds
             }
             else {
-                throw std::runtime_error("BridgeLoader: Unknown transfer policy type: " + policy_def.type);
+                result.error_message = "BridgeLoader: Unknown transfer policy type: " + policy_def.type;
+                return result;
             }
         }
 
@@ -90,24 +110,32 @@ namespace hakoniwa::pdu::bridge {
             
             std::shared_ptr<hakoniwa::pdu::Endpoint> src_ep = endpoint_container->ref(conn_def.source.endpointId);
             if (!src_ep) {
-                throw std::runtime_error("Source endpoint not found: " + conn_def.source.endpointId);
+                result.error_message = "BridgeLoader: Source endpoint not found: " + conn_def.source.endpointId;
+                return result;
             }
 
             for (const auto& dest_def : conn_def.destinations) {
                 std::shared_ptr<hakoniwa::pdu::Endpoint> dst_ep = endpoint_container->ref(dest_def.endpointId);
                 if (!dst_ep) {
-                    throw std::runtime_error("Destination endpoint not found: " + dest_def.endpointId);
+                    result.error_message = "BridgeLoader: Destination endpoint not found: " + dest_def.endpointId;
+                    return result;
                 }
 
                 for (const auto& trans_pdu_def : conn_def.transferPdus) {
                     auto pit = policy_map.find(trans_pdu_def.policyId);
                     if (pit == policy_map.end()) {
-                        throw std::runtime_error("Transfer policy not found: " + trans_pdu_def.policyId);
+                        result.error_message = "BridgeLoader: Transfer policy not found: " + trans_pdu_def.policyId;
+                        return result;
                     }
                     auto policy = pit->second;
                     const auto& policy_def = bridge_config.transferPolicies.at(trans_pdu_def.policyId);
 
-                    const auto& pdu_keys = bridge_config.pduKeyGroups.at(trans_pdu_def.pduKeyGroupId);
+                    auto key_group_it = bridge_config.pduKeyGroups.find(trans_pdu_def.pduKeyGroupId);
+                    if (key_group_it == bridge_config.pduKeyGroups.end()) {
+                        result.error_message = "BridgeLoader: PduKeyGroup not found: " + trans_pdu_def.pduKeyGroupId;
+                        return result;
+                    }
+                    const auto& pdu_keys = key_group_it->second;
 
                     bool is_immediate_atomic = (policy_def.type == "immediate") && policy_def.atomic.value_or(false);
                     if (is_immediate_atomic) {
@@ -131,7 +159,8 @@ namespace hakoniwa::pdu::bridge {
             }
             core->add_connection(std::move(connection));
         }
-        return { std::move(core) };
+        result.core = std::move(core);
+        return result;
     }
 
 }

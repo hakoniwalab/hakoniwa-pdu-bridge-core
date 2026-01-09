@@ -3,6 +3,9 @@
 #include <signal.h>
 #include <memory>
 #include <thread>
+#include <charconv>
+#include <cstring>
+#include <system_error>
 
 // Global pointer to the core for the signal handler
 std::unique_ptr<hakoniwa::pdu::bridge::BridgeCore> g_core;
@@ -24,36 +27,42 @@ int main(int argc, char* argv[]) {
     signal(SIGINT, signal_handler);
 
     std::string config_path = argv[1];
-    uint64_t delta_time_step_usec = std::stoull(argv[2]);
+    uint64_t delta_time_step_usec = 0;
+    auto delta_parse = std::from_chars(argv[2], argv[2] + std::strlen(argv[2]), delta_time_step_usec);
+    if (delta_parse.ec != std::errc()) {
+        std::cerr << "Invalid delta_time_step_usec: " << argv[2] << std::endl;
+        return 1;
+    }
     std::string endpoint_container_path = argv[3];
     std::string node_name = (argc > 4) ? argv[4] : "node1";
 
-    try {
-        std::shared_ptr<hakoniwa::pdu::EndpointContainer> endpoint_container = 
-            std::make_shared<hakoniwa::pdu::EndpointContainer>(node_name, endpoint_container_path);
-        HakoPduErrorType init_ret = endpoint_container->initialize();
-        if (init_ret != HAKO_PDU_ERR_OK) {
-            throw std::runtime_error("Failed to initialize EndpointContainer: " + endpoint_container->last_error());
-        }
-
-        // Load the bridge core using the high-level factory method
-        g_core = std::move(hakoniwa::pdu::bridge::build(config_path, node_name, delta_time_step_usec, endpoint_container).core);
-
-        if (endpoint_container->start_all() != HAKO_PDU_ERR_OK) {
-            throw std::runtime_error("Failed to start all endpoints in EndpointContainer: " + endpoint_container->last_error());
-        }
-
-        g_core->start();
-
-        std::cout << "Bridge core loaded for node " << node_name << ". Running... (Press Ctrl+C to stop)" << std::endl;
-        while (g_core->advance_timestep()) {
-        }
-        std::cout << "Bridge core stopped." << std::endl;
-
-    } catch (const std::exception& e) {
-        std::cerr << "ERROR: " << e.what() << std::endl;
+    std::shared_ptr<hakoniwa::pdu::EndpointContainer> endpoint_container =
+        std::make_shared<hakoniwa::pdu::EndpointContainer>(node_name, endpoint_container_path);
+    HakoPduErrorType init_ret = endpoint_container->initialize();
+    if (init_ret != HAKO_PDU_ERR_OK) {
+        std::cerr << "Failed to initialize EndpointContainer: " << endpoint_container->last_error() << std::endl;
         return 1;
     }
+
+    // Load the bridge core using the high-level factory method
+    auto build_result = hakoniwa::pdu::bridge::build(config_path, node_name, delta_time_step_usec, endpoint_container);
+    if (!build_result.ok()) {
+        std::cerr << "Bridge build failed: " << build_result.error_message << std::endl;
+        return 1;
+    }
+    g_core = std::move(build_result.core);
+
+    if (endpoint_container->start_all() != HAKO_PDU_ERR_OK) {
+        std::cerr << "Failed to start all endpoints in EndpointContainer: " << endpoint_container->last_error() << std::endl;
+        return 1;
+    }
+
+    g_core->start();
+
+    std::cout << "Bridge core loaded for node " << node_name << ". Running... (Press Ctrl+C to stop)" << std::endl;
+    while (g_core->advance_timestep()) {
+    }
+    std::cout << "Bridge core stopped." << std::endl;
 
     return 0;
 }
