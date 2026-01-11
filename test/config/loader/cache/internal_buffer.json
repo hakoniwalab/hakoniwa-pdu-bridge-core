@@ -1,7 +1,0 @@
-{
-    "type": "buffer",
-    "name": "internal_latest_buffer",
-    "store": {
-        "mode": "latest"
-    }
-}

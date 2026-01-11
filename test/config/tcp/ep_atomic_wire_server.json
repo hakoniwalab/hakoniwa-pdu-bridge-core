@@ -1,6 +1,6 @@
 {
     "name": "n2-src",
     "pdu_def_path": "../core_flow/atomic_pdudef.json",
-    "cache": "cache/internal_queue.json",
+    "cache": "../core_flow/cache/internal_queue.json",
     "comm": "comm_server.json"
 }
