@@ -107,4 +107,101 @@ TEST(BridgeTcpFlowTest, ImmediatePolicyCrossNode) {
     server_core->stop();
 }
 
+TEST(BridgeTcpFlowTest, AtomicPolicyCrossNode) {
+    // 1. Setup
+    auto server_endpoint_container = std::make_shared<hakoniwa::pdu::EndpointContainer>("node2", tcp_test_config_path("endpoints.json"));
+    ASSERT_EQ(server_endpoint_container->initialize(), HAKO_PDU_ERR_OK);
+    auto client_endpoint_container = std::make_shared<hakoniwa::pdu::EndpointContainer>("node1", tcp_test_config_path("endpoints.json"));
+    ASSERT_EQ(client_endpoint_container->initialize(), HAKO_PDU_ERR_OK);
+
+    auto server_result = hakoniwa::pdu::bridge::build(tcp_test_config_path("bridge-atomic.json"), "node2", 1000, server_endpoint_container);
+    auto client_result = hakoniwa::pdu::bridge::build(tcp_test_config_path("bridge-atomic.json"), "node1", 1000, client_endpoint_container);
+
+    auto server_core = std::move(server_result.core);
+    auto client_core = std::move(client_result.core);
+
+    ASSERT_TRUE(server_core != nullptr);
+    ASSERT_TRUE(client_core != nullptr);
+
+    ASSERT_EQ(server_endpoint_container->start_all(), HAKO_PDU_ERR_OK);
+    ASSERT_EQ(client_endpoint_container->start_all(), HAKO_PDU_ERR_OK);
+
+    while (server_endpoint_container->is_running_all() == false ||
+           client_endpoint_container->is_running_all() == false) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    server_core->start();
+    client_core->start();
+    while (!server_core->is_running()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    while (!client_core->is_running()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    auto src_ep = client_endpoint_container->ref("n1-src");
+    auto dst_ep = server_endpoint_container->ref("n2-dst");
+
+    // 2. Execution
+    hakoniwa::pdu::PduKey pdu1_key = {"Test", "pdu1"};
+    hakoniwa::pdu::PduKey pdu2_key = {"Test", "pdu2"};
+    hakoniwa::pdu::PduKey pdu3_key = {"Test", "pdu3"};
+    hakoniwa::pdu::PduKey time_key = {"SimTime", "pdu"};
+
+    std::vector<std::byte> pdu1_data(src_ep->get_pdu_size(pdu1_key), std::byte(1));
+    std::vector<std::byte> pdu2_data(src_ep->get_pdu_size(pdu2_key), std::byte(2));
+    std::vector<std::byte> pdu3_data(src_ep->get_pdu_size(pdu3_key), std::byte(3));
+    std::vector<std::byte> time_data(src_ep->get_pdu_size(time_key), std::byte(9));
+
+    ASSERT_EQ(src_ep->send(pdu1_key, pdu1_data), HAKO_PDU_ERR_OK);
+    ASSERT_EQ(src_ep->send(pdu2_key, pdu2_data), HAKO_PDU_ERR_OK);
+    ASSERT_EQ(src_ep->send(pdu3_key, pdu3_data), HAKO_PDU_ERR_OK);
+
+    for (int i = 0; i < 10; ++i) {
+        client_core->advance_timestep();
+        server_core->advance_timestep();
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+
+    std::vector<std::byte> recv_buffer(128);
+    size_t received_size = 0;
+    ASSERT_EQ(dst_ep->recv(pdu1_key, recv_buffer, received_size), HAKO_PDU_ERR_NO_ENTRY);
+    ASSERT_EQ(dst_ep->recv(pdu2_key, recv_buffer, received_size), HAKO_PDU_ERR_NO_ENTRY);
+    ASSERT_EQ(dst_ep->recv(pdu3_key, recv_buffer, received_size), HAKO_PDU_ERR_NO_ENTRY);
+    ASSERT_EQ(dst_ep->recv(time_key, recv_buffer, received_size), HAKO_PDU_ERR_NO_ENTRY);
+
+    ASSERT_EQ(src_ep->send(time_key, time_data), HAKO_PDU_ERR_OK);
+
+    for (int i = 0; i < 20; ++i) {
+        client_core->advance_timestep();
+        server_core->advance_timestep();
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+
+    ASSERT_EQ(dst_ep->recv(pdu1_key, recv_buffer, received_size), HAKO_PDU_ERR_OK);
+    ASSERT_EQ(received_size, pdu1_data.size());
+    recv_buffer.resize(received_size);
+    ASSERT_EQ(recv_buffer, pdu1_data);
+
+    ASSERT_EQ(dst_ep->recv(pdu2_key, recv_buffer, received_size), HAKO_PDU_ERR_OK);
+    ASSERT_EQ(received_size, pdu2_data.size());
+    recv_buffer.resize(received_size);
+    ASSERT_EQ(recv_buffer, pdu2_data);
+
+    ASSERT_EQ(dst_ep->recv(pdu3_key, recv_buffer, received_size), HAKO_PDU_ERR_OK);
+    ASSERT_EQ(received_size, pdu3_data.size());
+    recv_buffer.resize(received_size);
+    ASSERT_EQ(recv_buffer, pdu3_data);
+
+    ASSERT_EQ(dst_ep->recv(time_key, recv_buffer, received_size), HAKO_PDU_ERR_OK);
+    ASSERT_EQ(received_size, time_data.size());
+    recv_buffer.resize(received_size);
+    ASSERT_EQ(recv_buffer, time_data);
+
+    // 3. Teardown
+    client_core->stop();
+    server_core->stop();
+}
+
 }
