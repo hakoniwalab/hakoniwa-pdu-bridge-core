@@ -1,6 +1,6 @@
 {
     "name": "epA_src",
     "pdu_def_path": "../../../hakoniwa-pdu-endpoint/config/sample/comm/hakoniwa/pdudef.json",
-    "cache": "../cache/internal_queue.json",
+    "cache": "cache/internal_queue.json",
     "comm": null
 }
