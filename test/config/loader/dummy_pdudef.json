@@ -1,0 +1,29 @@
+{
+  "robots": [
+    {
+      "name": "Dummy",
+      "shm_pdu_writers": [
+        {
+          "type": "hako_msgs/Dummy",
+          "org_name": "data",
+          "name": "Dummy_data",
+          "channel_id": 1,
+          "pdu_size": 8,
+          "write_cycle": 1,
+          "method_type": "SHM"
+        }
+      ],
+      "shm_pdu_readers": [
+        {
+          "type": "hako_msgs/Dummy",
+          "org_name": "data",
+          "name": "Dummy_data",
+          "channel_id": 1,
+          "pdu_size": 8,
+          "write_cycle": 1,
+          "method_type": "SHM"
+        }
+      ]
+    }
+  ]
+}

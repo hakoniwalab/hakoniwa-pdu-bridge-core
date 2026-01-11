@@ -1,5 +1,7 @@
 find_package(GTest REQUIRED)
 
+set(TEST_CONFIG_DIR "${CMAKE_CURRENT_SOURCE_DIR}/config" CACHE PATH "Test config root directory")
+
 set(TEST_SOURCES
     bridge_loader_test.cpp
     bridge_core_flow_test.cpp
@@ -15,7 +17,7 @@ target_include_directories(hakoniwa_pdu_bridge_tests
 
 target_compile_definitions(hakoniwa_pdu_bridge_tests
     PRIVATE
-        TEST_CONFIG_DIR="${CMAKE_CURRENT_SOURCE_DIR}/config"
+        TEST_CONFIG_DIR="${TEST_CONFIG_DIR}"
 )
 
 target_link_libraries(hakoniwa_pdu_bridge_tests

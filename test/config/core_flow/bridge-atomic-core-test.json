@@ -10,7 +10,7 @@
     "nodes": [
       { "id": "node1" }
     ],
-   "endpoints_config_path": "atmoic_endpoints.json",
+    "endpoints_config_path": "atomic_endpoints.json",
     "pduKeyGroups": {
       "atomic_group": [
         { "id": "Test.pdu1", "robot_name": "Test", "pdu_name": "pdu1" },

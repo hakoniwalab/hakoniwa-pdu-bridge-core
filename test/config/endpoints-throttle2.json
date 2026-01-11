@@ -1,9 +1,0 @@
-[
-      {
-        "nodeId": "node1",
-        "endpoints": [
-          { "id": "ep1", "mode": "local", "config_path": "../loader/dummy_endpoint.json", "direction": "out" },
-          { "id": "ep2", "mode": "local", "config_path": "../loader/dummy_endpoint.json", "direction": "in" }
-        ]
-      }
-    ]

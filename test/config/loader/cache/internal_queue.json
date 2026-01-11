@@ -1,0 +1,9 @@
+{
+  "type": "queue",
+  "name": "internal_fifo_queue",
+  "store": {
+    "mode": "queue",
+    "capacity": 10
+  }
+}
+
