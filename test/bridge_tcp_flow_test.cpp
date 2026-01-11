@@ -28,9 +28,9 @@ namespace {
 
 TEST(BridgeTcpFlowTest, ImmediatePolicyCrossNode) {
     // 1. Setup
-    auto server_endpoint_container = std::make_shared<hakoniwa::pdu::EndpointContainer>("node2", tcp_test_config_path("endpoints-atomic.json"));
+    auto server_endpoint_container = std::make_shared<hakoniwa::pdu::EndpointContainer>("node2", tcp_test_config_path("endpoints.json"));
     ASSERT_EQ(server_endpoint_container->initialize(), HAKO_PDU_ERR_OK);
-    auto client_endpoint_container = std::make_shared<hakoniwa::pdu::EndpointContainer>("node1", tcp_test_config_path("endpoints-atomic.json"));
+    auto client_endpoint_container = std::make_shared<hakoniwa::pdu::EndpointContainer>("node1", tcp_test_config_path("endpoints.json"));
     ASSERT_EQ(client_endpoint_container->initialize(), HAKO_PDU_ERR_OK);
 
     auto server_result = hakoniwa::pdu::bridge::build(tcp_test_config_path("bridge.json"), "node2", 1000, server_endpoint_container);
