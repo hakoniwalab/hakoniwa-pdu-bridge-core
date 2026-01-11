@@ -16,14 +16,14 @@
         "nodeId": "node1",
         "endpoints": [
           { "id": "n1-src", "mode": "local", "config_path": "ep_atomic_local_src.json", "direction": "out" },
-          { "id": "n1-dst", "mode": "wire", "config_path": "ep_atomic_wire_client.json", "direction": "in" }
+          { "id": "n1-dst", "mode": "wire", "config_path": "ep_atomic_wire_client.json", "direction": "out" }
         ]
       },
       {
         "nodeId": "node2",
         "endpoints": [
           { "id": "n2-src", "mode": "wire", "config_path": "ep_atomic_wire_server.json", "direction": "in" },
-          { "id": "n2-dst", "mode": "local", "config_path": "ep_atomic_local_dst.json", "direction": "out" }
+          { "id": "n2-dst", "mode": "local", "config_path": "ep_atomic_local_dst.json", "direction": "in" }
         ]
       }
     ],
