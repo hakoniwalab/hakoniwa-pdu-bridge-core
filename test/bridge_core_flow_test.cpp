@@ -2,6 +2,7 @@
 #include "hakoniwa/pdu/bridge/bridge_core.hpp"
 #include "hakoniwa/pdu/endpoint.hpp"
 #include <gtest/gtest.h>
+#include <cstdlib>
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -10,8 +11,15 @@
 namespace hakoniwa::pdu::bridge::test {
 
 namespace {
+    std::filesystem::path test_config_root() {
+        if (const char* config_dir = std::getenv("HAKO_TEST_CONFIG_DIR"); config_dir && *config_dir) {
+            return std::filesystem::path(config_dir);
+        }
+        return std::filesystem::path(TEST_CONFIG_DIR);
+    }
+
     std::string config_path(const std::string& filename) {
-        return (std::filesystem::path(TEST_CONFIG_DIR) / filename).string();
+        return (test_config_root() / "core_flow" / filename).string();
     }
 }
 

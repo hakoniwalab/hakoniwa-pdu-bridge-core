@@ -1,0 +1,6 @@
+{
+  "name": "dummy-endpoint",
+  "pdu_def_path": "../common/dummy_pdudef.json",
+  "cache": "../core_flow/cache/internal_queue.json",
+  "comm": null
+}

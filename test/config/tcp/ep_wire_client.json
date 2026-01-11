@@ -1,6 +1,6 @@
 {
     "name": "epA_dst_wire",
     "pdu_def_path": "../../../hakoniwa-pdu-endpoint/config/sample/comm/hakoniwa/pdudef.json",
-    "cache": "../cache/internal_queue.json",
+    "cache": "../core_flow/cache/internal_queue.json",
     "comm": "comm_client.json"
 }
