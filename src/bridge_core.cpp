@@ -5,11 +5,12 @@
 
 namespace hakoniwa::pdu::bridge {
 
-BridgeCore::BridgeCore(const std::string& node_name, std::shared_ptr<hakoniwa::time_source::ITimeSource> time_source) 
-    : node_name_(node_name), is_running_(false), time_source_(time_source) {
+BridgeCore::BridgeCore(const std::string& node_name, std::shared_ptr<hakoniwa::time_source::ITimeSource> time_source, std::shared_ptr<hakoniwa::pdu::EndpointContainer> endpoint_container) 
+    : node_name_(node_name), is_running_(false), time_source_(time_source), endpoint_container_(endpoint_container) {
     if (!time_source_) {
         throw std::runtime_error("BridgeCore: Time source cannot be null.");
     }
+    endpoint_ids_ = endpoint_container_->list_endpoint_ids();
 }
 
 void BridgeCore::add_connection(std::unique_ptr<BridgeConnection> connection) {
@@ -28,6 +29,14 @@ bool BridgeCore::advance_timestep() {
         // Not running, so do nothing.
         return false;
     }
+    // Trigger recv events for hakoniwa polling shm endpoints
+    for (const auto& endpoint_id : endpoint_ids_) {
+        auto endpoint = endpoint_container_->ref(endpoint_id);
+        if (endpoint) {
+            endpoint->process_recv_events();
+        }
+    }
+    // Trigger cyclic transfers
     for (auto& connection : connections_) {
         connection->cyclic_trigger();
     }

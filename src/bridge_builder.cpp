@@ -66,7 +66,8 @@ namespace hakoniwa::pdu::bridge {
          */
         std::unique_ptr<BridgeCore> core = std::make_unique<BridgeCore>(
             node_name,
-            time_source
+            time_source,
+            endpoint_container
         );
 
         /*
