@@ -1,6 +1,7 @@
 #include "hakoniwa/pdu/bridge/bridge_builder.hpp"
 #include "hakoniwa/pdu/bridge/bridge_core.hpp"
 #include "hakoniwa/pdu/endpoint.hpp"
+#include "hakoniwa/time_source/time_source_factory.hpp"
 #include <gtest/gtest.h>
 #include <cstdlib>
 #include <filesystem>
@@ -30,7 +31,10 @@ TEST(BridgeCoreFlowTest, ImmediatePolicyFlow) {
     HakoPduErrorType init_ret = endpoint_container->initialize();
     ASSERT_EQ(init_ret, HAKO_PDU_ERR_OK);
 
-    auto result = hakoniwa::pdu::bridge::build(config_path("bridge-core-flow-test.json"), "node1", 1000, endpoint_container);
+    std::shared_ptr<hakoniwa::time_source::ITimeSource> time_source = 
+        hakoniwa::time_source::create_time_source("real", 1000);
+
+    auto result = hakoniwa::pdu::bridge::build(config_path("bridge-core-flow-test.json"), "node1", time_source, endpoint_container);
     ASSERT_TRUE(result.ok()) << result.error_message;
     auto bridge_core = std::move(result.core);
 
@@ -83,8 +87,10 @@ TEST(BridgeCoreFlowTest, AtomicPolicyFlow) {
     if (init_ret != HAKO_PDU_ERR_OK)
         std::cout << "error message: " << endpoint_container->last_error() << std::endl;
     ASSERT_EQ(init_ret, HAKO_PDU_ERR_OK);
+    std::shared_ptr<hakoniwa::time_source::ITimeSource> time_source = 
+        hakoniwa::time_source::create_time_source("real", 1000);
 
-    auto result = hakoniwa::pdu::bridge::build(config_path("bridge-atomic-core-test.json"), "node1", 1000, endpoint_container);
+    auto result = hakoniwa::pdu::bridge::build(config_path("bridge-atomic-core-test.json"), "node1", time_source, endpoint_container);
     ASSERT_TRUE(result.ok()) << result.error_message;
     auto bridge_core = std::move(result.core);
 

@@ -47,7 +47,10 @@ namespace hakoniwa::pdu::bridge {
             return std::nullopt;
         }
     }
-    BridgeBuildResult build(const std::string& config_file_path, const std::string& node_name, uint64_t delta_time_step_usec, std::shared_ptr<hakoniwa::pdu::EndpointContainer> endpoint_container)
+    BridgeBuildResult build(const std::string& config_file_path, 
+        const std::string& node_name, 
+        std::shared_ptr<hakoniwa::time_source::ITimeSource> time_source,
+        std::shared_ptr<hakoniwa::pdu::EndpointContainer> endpoint_container)
     {
         BridgeBuildResult result;
         std::string error_message;
@@ -58,10 +61,6 @@ namespace hakoniwa::pdu::bridge {
         }
         const BridgeConfig& bridge_config = *maybe_config;
 
-        /*
-         * time source selection
-         */
-        std::shared_ptr<hakoniwa::time_source::ITimeSource> time_source = hakoniwa::time_source::create_time_source(bridge_config.time_source_type, delta_time_step_usec);
         /*
          * bridge core creation
          */

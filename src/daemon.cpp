@@ -1,4 +1,5 @@
 #include "hakoniwa/pdu/bridge/bridge_builder.hpp"
+#include "hakoniwa/time_source/time_source_factory.hpp"
 #include <iostream>
 #include <signal.h>
 #include <memory>
@@ -43,9 +44,10 @@ int main(int argc, char* argv[]) {
         std::cerr << "Failed to initialize EndpointContainer: " << endpoint_container->last_error() << std::endl;
         return 1;
     }
+    std::shared_ptr<hakoniwa::time_source::ITimeSource> time_source = hakoniwa::time_source::create_time_source("real", delta_time_step_usec);
 
     // Load the bridge core using the high-level factory method
-    auto build_result = hakoniwa::pdu::bridge::build(config_path, node_name, delta_time_step_usec, endpoint_container);
+    auto build_result = hakoniwa::pdu::bridge::build(config_path, node_name, time_source, endpoint_container);
     if (!build_result.ok()) {
         std::cerr << "Bridge build failed: " << build_result.error_message << std::endl;
         return 1;
@@ -61,6 +63,7 @@ int main(int argc, char* argv[]) {
 
     std::cout << "Bridge core loaded for node " << node_name << ". Running... (Press Ctrl+C to stop)" << std::endl;
     while (g_core->advance_timestep()) {
+        
     }
     std::cout << "Bridge core stopped." << std::endl;
 

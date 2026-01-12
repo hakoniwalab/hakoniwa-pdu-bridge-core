@@ -14,7 +14,8 @@ namespace hakoniwa::pdu::bridge {
  */
 std::optional<BridgeConfig> parse(const std::string& config_file_path, std::string& error_message);
 
-BridgeBuildResult build(const std::string& config_file_path, const std::string& node_name, uint64_t delta_time_step_usec, 
+BridgeBuildResult build(const std::string& config_file_path, 
+    const std::string& node_name, std::shared_ptr<hakoniwa::time_source::ITimeSource> time_source,
     std::shared_ptr<hakoniwa::pdu::EndpointContainer> endpoint_container);
 
 } // namespace hakoniwa::pdu::bridge

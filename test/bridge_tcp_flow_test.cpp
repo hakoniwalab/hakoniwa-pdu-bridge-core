@@ -1,5 +1,6 @@
 #include "hakoniwa/pdu/bridge/bridge_builder.hpp"
 #include "hakoniwa/pdu/bridge/bridge_core.hpp"
+#include "hakoniwa/time_source/time_source_factory.hpp"
 #include "hakoniwa/pdu/endpoint.hpp"
 #include "hakoniwa/pdu/endpoint_container.hpp"
 #include <gtest/gtest.h>
@@ -33,8 +34,11 @@ TEST(BridgeTcpFlowTest, ImmediatePolicyCrossNode) {
     auto client_endpoint_container = std::make_shared<hakoniwa::pdu::EndpointContainer>("node1", tcp_test_config_path("endpoints.json"));
     ASSERT_EQ(client_endpoint_container->initialize(), HAKO_PDU_ERR_OK);
 
-    auto server_result = hakoniwa::pdu::bridge::build(tcp_test_config_path("bridge.json"), "node2", 1000, server_endpoint_container);
-    auto client_result = hakoniwa::pdu::bridge::build(tcp_test_config_path("bridge.json"), "node1", 1000, client_endpoint_container);
+    std::shared_ptr<hakoniwa::time_source::ITimeSource> time_source = 
+        hakoniwa::time_source::create_time_source("real", 1000);
+
+    auto server_result = hakoniwa::pdu::bridge::build(tcp_test_config_path("bridge.json"), "node2", time_source, server_endpoint_container);
+    auto client_result = hakoniwa::pdu::bridge::build(tcp_test_config_path("bridge.json"), "node1", time_source, client_endpoint_container);
 
     auto server_core = std::move(server_result.core);
     auto client_core = std::move(client_result.core);
@@ -113,9 +117,11 @@ TEST(BridgeTcpFlowTest, AtomicPolicyCrossNode) {
     ASSERT_EQ(server_endpoint_container->initialize(), HAKO_PDU_ERR_OK);
     auto client_endpoint_container = std::make_shared<hakoniwa::pdu::EndpointContainer>("node1", tcp_test_config_path("endpoints-atomic.json"));
     ASSERT_EQ(client_endpoint_container->initialize(), HAKO_PDU_ERR_OK);
+    std::shared_ptr<hakoniwa::time_source::ITimeSource> time_source = 
+        hakoniwa::time_source::create_time_source("real", 1000);
 
-    auto server_result = hakoniwa::pdu::bridge::build(tcp_test_config_path("bridge-atomic.json"), "node2", 1000, server_endpoint_container);
-    auto client_result = hakoniwa::pdu::bridge::build(tcp_test_config_path("bridge-atomic.json"), "node1", 1000, client_endpoint_container);
+    auto server_result = hakoniwa::pdu::bridge::build(tcp_test_config_path("bridge-atomic.json"), "node2", time_source, server_endpoint_container);
+    auto client_result = hakoniwa::pdu::bridge::build(tcp_test_config_path("bridge-atomic.json"), "node1", time_source, client_endpoint_container);
 
     auto server_core = std::move(server_result.core);
     auto client_core = std::move(client_result.core);
