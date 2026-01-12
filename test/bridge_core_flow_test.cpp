@@ -64,7 +64,7 @@ TEST(BridgeCoreFlowTest, ImmediatePolicyFlow) {
     ASSERT_EQ(send_ret, HAKO_PDU_ERR_OK);
 
     // Execute one step of the bridge logic
-    bool success = bridge_core->advance_timestep();
+    bool success = bridge_core->cyclic_trigger();
     ASSERT_TRUE(success);
 
     // 3. Assertion
@@ -118,7 +118,7 @@ TEST(BridgeCoreFlowTest, AtomicPolicyFlow) {
     ASSERT_EQ(src_ep->send(pdu3_key, pdu3_data), HAKO_PDU_ERR_OK);
 
     // Advance time
-    ASSERT_TRUE(bridge_core->advance_timestep());
+    ASSERT_TRUE(bridge_core->cyclic_trigger());
 
     // Assert that nothing is received
     std::vector<std::byte> recv_buffer(128);
@@ -132,7 +132,7 @@ TEST(BridgeCoreFlowTest, AtomicPolicyFlow) {
     ASSERT_EQ(src_ep->send(time_key, time_data), HAKO_PDU_ERR_OK);
 
     // Advance time again
-    ASSERT_TRUE(bridge_core->advance_timestep());
+    ASSERT_TRUE(bridge_core->cyclic_trigger());
 
     // Assert that all PDUs are now received
     ASSERT_EQ(dst_ep->recv(pdu1_key, recv_buffer, received_size), HAKO_PDU_ERR_OK);

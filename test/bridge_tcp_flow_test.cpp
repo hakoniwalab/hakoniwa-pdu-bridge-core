@@ -92,8 +92,8 @@ TEST(BridgeTcpFlowTest, ImmediatePolicyCrossNode) {
 
     // Run for more timesteps to allow data to flow
     for (int i = 0; i < 50; ++i) { // Increased iterations
-        client_core->advance_timestep();
-        server_core->advance_timestep();
+        client_core->cyclic_trigger();
+        server_core->cyclic_trigger();
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
@@ -165,8 +165,8 @@ TEST(BridgeTcpFlowTest, AtomicPolicyCrossNode) {
     ASSERT_EQ(src_ep->send(pdu3_key, pdu3_data), HAKO_PDU_ERR_OK);
 
     for (int i = 0; i < 10; ++i) {
-        client_core->advance_timestep();
-        server_core->advance_timestep();
+        client_core->cyclic_trigger();
+        server_core->cyclic_trigger();
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
@@ -180,8 +180,8 @@ TEST(BridgeTcpFlowTest, AtomicPolicyCrossNode) {
     ASSERT_EQ(src_ep->send(time_key, time_data), HAKO_PDU_ERR_OK);
 
     for (int i = 0; i < 20; ++i) {
-        client_core->advance_timestep();
-        server_core->advance_timestep();
+        client_core->cyclic_trigger();
+        server_core->cyclic_trigger();
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 

@@ -31,8 +31,11 @@ public:
         return true;
     }
 
-    // Starts the main execution loop. This is a blocking call.
-    bool advance_timestep();
+    /*
+     * Trigger cyclic processing for all connections and endpoints.
+     * Returns true if the bridge is still running, false if it has been stopped.
+     */
+    bool cyclic_trigger();
 
     // Stops the execution loop. This can be called from a different thread.
     void stop();

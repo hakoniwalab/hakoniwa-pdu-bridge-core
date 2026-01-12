@@ -26,7 +26,7 @@
 ### 主要コンポーネント
 
 - **BridgeDaemon**: `main()` で `BridgeCore` を構築し、ループ実行する起点。
-- **BridgeCore**: `BridgeConnection` を保持し、`advance_timestep()` を回して転送を駆動。
+- **BridgeCore**: `BridgeConnection` を保持し、`cyclic_trigger()` を回して転送を駆動。
 - **BridgeConnection**: 1つの `source` と複数の `destinations` を束ね、`TransferPdu` を保持。
 - **TransferPdu / TransferAtomicPduGroup**: 単一PDUまたはPDUグループの転送を行う。
 - **Policy**: `immediate` / `throttle` / `ticker` の時間モデルを提供。

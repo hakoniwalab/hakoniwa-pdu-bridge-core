@@ -24,7 +24,7 @@ void BridgeCore::start() {
     }
 }
 
-bool BridgeCore::advance_timestep() {
+bool BridgeCore::cyclic_trigger() {
     if (!is_running_) {
         // Not running, so do nothing.
         return false;
