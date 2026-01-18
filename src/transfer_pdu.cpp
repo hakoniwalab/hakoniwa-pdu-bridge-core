@@ -58,6 +58,12 @@ void hakoniwa::pdu::bridge::TransferPdu::try_transfer() {
         return;
     }
     if (policy_->should_transfer(endpoint_pdu_resolved_key_, time_source_)) {
+        std::cout << "INFO: Bridge transfer triggered: " << config_pdu_key_.id
+                  << " src=" << src_endpoint_->get_name()
+                  << " dst=" << dst_endpoint_->get_name()
+                  << " robot=" << endpoint_pdu_resolved_key_.robot
+                  << " channel=" << endpoint_pdu_resolved_key_.channel_id
+                  << std::endl;
         transfer();
         policy_->on_transferred(endpoint_pdu_resolved_key_, time_source_);
     }
@@ -119,7 +125,11 @@ void hakoniwa::pdu::bridge::TransferPdu::transfer() {
         return;
     }
 
-    //std::cout << "DEBUG: Transferred PDU: " << config_pdu_key_.id << " from " << src_endpoint_->get_name()  << " to " << dst_endpoint_->get_name() << std::endl;
+    std::cout << "INFO: Bridge transfer completed: " << config_pdu_key_.id
+              << " bytes=" << received_size
+              << " src=" << src_endpoint_->get_name()
+              << " dst=" << dst_endpoint_->get_name()
+              << std::endl;
 }
 
 bool hakoniwa::pdu::bridge::TransferPdu::accept_epoch(uint64_t pdu_epoch) {
@@ -203,6 +213,10 @@ void hakoniwa::pdu::bridge::TransferAtomicPduGroup::try_transfer(
 
 void hakoniwa::pdu::bridge::TransferAtomicPduGroup::try_transfer_group()
 {
+    std::cout << "INFO: Bridge atomic transfer triggered: count=" << transfer_atomic_pdu_group_.size()
+              << " src=" << src_endpoint_->get_name()
+              << " dst=" << dst_endpoint_->get_name()
+              << std::endl;
     for (auto& pdu_resolved_key : transfer_atomic_pdu_group_) {
         //read pdu
         std::string pdu_name = src_endpoint_->get_pdu_name(*pdu_resolved_key);

@@ -29,6 +29,14 @@ bool BridgeCore::cyclic_trigger() {
         // Not running, so do nothing.
         return false;
     }
+    static bool logged_once = false;
+    if (!logged_once) {
+        std::cout << "DEBUG: BridgeCore cyclic_trigger start. endpoints=" << endpoint_ids_.size() << std::endl;
+        for (const auto& endpoint_id : endpoint_ids_) {
+            std::cout << "DEBUG: BridgeCore endpoint_id=" << endpoint_id << std::endl;
+        }
+        logged_once = true;
+    }
     // Trigger recv events for hakoniwa polling shm endpoints
     for (const auto& endpoint_id : endpoint_ids_) {
         auto endpoint = endpoint_container_->ref(endpoint_id);

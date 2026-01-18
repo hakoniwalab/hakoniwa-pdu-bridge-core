@@ -127,7 +127,6 @@ namespace hakoniwa::pdu::bridge {
                         result.error_message = "BridgeLoader: Transfer policy not found: " + trans_pdu_def.policyId;
                         return result;
                     }
-                    auto policy = pit->second;
                     const auto& policy_def = bridge_config.transferPolicies.at(trans_pdu_def.policyId);
 
                     auto key_group_it = bridge_config.pduKeyGroups.find(trans_pdu_def.pduKeyGroupId);
@@ -139,17 +138,15 @@ namespace hakoniwa::pdu::bridge {
 
                     bool is_immediate_atomic = (policy_def.type == "immediate") && policy_def.atomic.value_or(false);
                     if (is_immediate_atomic) {
-                        auto immediate_policy = std::dynamic_pointer_cast<ImmediatePolicy>(policy);
-                        if (!immediate_policy) {
-                            throw std::runtime_error("Immediate policy type mismatch: " + trans_pdu_def.policyId);
-                        }
+                        auto immediate_policy = std::make_shared<ImmediatePolicy>(true);
                         for (const auto& pdu_key_def : pdu_keys) {
                             auto channel_id = src_ep->get_pdu_channel_id({pdu_key_def.robot_name, pdu_key_def.pdu_name});
                             immediate_policy->add_pdu_key({pdu_key_def.robot_name, channel_id});
                         }
-                        auto transfer_group = std::make_unique<TransferAtomicPduGroup>(pdu_keys, policy, time_source, src_ep, dst_ep);
+                        auto transfer_group = std::make_unique<TransferAtomicPduGroup>(pdu_keys, immediate_policy, time_source, src_ep, dst_ep);
                         connection->add_transfer_pdu(std::move(transfer_group));
                     } else {
+                        auto policy = pit->second;
                         for (const auto& pdu_key_def : pdu_keys) {
                             auto transfer_pdu = std::make_unique<TransferPdu>(pdu_key_def, policy, time_source, src_ep, dst_ep);
                             connection->add_transfer_pdu(std::move(transfer_pdu));
