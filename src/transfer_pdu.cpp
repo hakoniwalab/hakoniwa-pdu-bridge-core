@@ -213,11 +213,16 @@ void hakoniwa::pdu::bridge::TransferAtomicPduGroup::try_transfer(
 
 void hakoniwa::pdu::bridge::TransferAtomicPduGroup::try_transfer_group()
 {
-    std::cout << "INFO: Bridge atomic transfer triggered: count=" << transfer_atomic_pdu_group_.size()
-              << " src=" << src_endpoint_->get_name()
-              << " dst=" << dst_endpoint_->get_name()
-              << std::endl;
+    //std::cout << "DEBUG: START transfer" << std::endl;
     for (auto& pdu_resolved_key : transfer_atomic_pdu_group_) {
+#if 0
+        std::cout << "INFO: Bridge atomic group transfer triggered: "
+                  << " src=" << src_endpoint_->get_name()
+                  << " dst=" << dst_endpoint_->get_name()
+                  << " robot=" << pdu_resolved_key->robot
+                  << " channel=" << pdu_resolved_key->channel_id
+                  << std::endl;
+#endif
         //read pdu
         std::string pdu_name = src_endpoint_->get_pdu_name(*pdu_resolved_key);
         size_t pdu_size = src_endpoint_->get_pdu_size(
@@ -254,6 +259,13 @@ void hakoniwa::pdu::bridge::TransferAtomicPduGroup::try_transfer_group()
                       << "." << pdu_name << " to destination: " << write_err << std::endl;
             continue;
         }
+        dst_endpoint_->process_recv_events(); // Ensure the destination processes the received PDU
     }
-
+#if 0
+    std::cout << "INFO: Bridge atomic group transfer completed: "
+              << " bytes=" << transfer_atomic_pdu_group_.size()
+              << " src=" << src_endpoint_->get_name()
+              << " dst=" << dst_endpoint_->get_name()
+              << std::endl;
+#endif
 }
