@@ -8,6 +8,9 @@ void BridgeConnection::add_transfer_pdu(std::unique_ptr<ITransferPdu> pdu) {
 }
 
 void BridgeConnection::cyclic_trigger() {
+    #ifdef ENABLE_DEBUG_MESSAGES
+    std::cout << "DEBUG: BridgeConnection cyclic_trigger called. size=" << transfer_pdus_.size() << std::endl;
+    #endif
     for (auto& pdu : transfer_pdus_) {
         pdu->cyclic_trigger();
     }

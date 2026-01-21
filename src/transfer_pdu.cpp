@@ -109,8 +109,10 @@ void hakoniwa::pdu::bridge::TransferPdu::transfer() {
     }
     
     if (!accept_epoch(pdu_epoch)) {
+        #ifdef ENABLE_DEBUG_MESSAGES
         std::cout << "DEBUG: Discarding PDU " << config_pdu_key_.id << " (epoch " << pdu_epoch 
                   << ", owner " << owner_epoch_ << ")" << std::endl;
+        #endif
         return;
     }
 
@@ -215,7 +217,7 @@ void hakoniwa::pdu::bridge::TransferAtomicPduGroup::try_transfer_group()
 {
     //std::cout << "DEBUG: START transfer" << std::endl;
     for (auto& pdu_resolved_key : transfer_atomic_pdu_group_) {
-#if 0
+#ifdef ENABLE_DEBUG_MESSAGES
         std::cout << "INFO: Bridge atomic group transfer triggered: "
                   << " src=" << src_endpoint_->get_name()
                   << " dst=" << dst_endpoint_->get_name()
@@ -261,7 +263,7 @@ void hakoniwa::pdu::bridge::TransferAtomicPduGroup::try_transfer_group()
         }
         dst_endpoint_->process_recv_events(); // Ensure the destination processes the received PDU
     }
-#if 0
+#ifdef ENABLE_DEBUG_MESSAGES
     std::cout << "INFO: Bridge atomic group transfer completed: "
               << " bytes=" << transfer_atomic_pdu_group_.size()
               << " src=" << src_endpoint_->get_name()

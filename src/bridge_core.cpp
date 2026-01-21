@@ -26,16 +26,11 @@ void BridgeCore::start() {
 
 bool BridgeCore::cyclic_trigger() {
     if (!is_running_) {
+        #ifdef ENABLE_DEBUG_MESSAGES
+        std::cout << "DEBUG: BridgeCore not running, skipping cyclic_trigger." << std::endl;
+        #endif
         // Not running, so do nothing.
         return false;
-    }
-    static bool logged_once = false;
-    if (!logged_once) {
-        std::cout << "DEBUG: BridgeCore cyclic_trigger start. endpoints=" << endpoint_ids_.size() << std::endl;
-        for (const auto& endpoint_id : endpoint_ids_) {
-            std::cout << "DEBUG: BridgeCore endpoint_id=" << endpoint_id << std::endl;
-        }
-        logged_once = true;
     }
     // Trigger recv events for hakoniwa polling shm endpoints
     for (const auto& endpoint_id : endpoint_ids_) {
@@ -45,9 +40,15 @@ bool BridgeCore::cyclic_trigger() {
         }
     }
     // Trigger cyclic transfers
+    #ifdef ENABLE_DEBUG_MESSAGES
+    std::cout << "connections_ size: " << connections_.size() << std::endl;
+    #endif
     for (auto& connection : connections_) {
         connection->cyclic_trigger();
     }
+    #ifdef ENABLE_DEBUG_MESSAGES
+    std::cout << "DEBUG: BridgeCore cyclic_trigger completed." << std::endl;
+    #endif
     return true;
 }
 
