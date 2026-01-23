@@ -56,6 +56,7 @@ private:
     uint64_t owner_epoch_ = 0;
     void on_recv_callback(const hakoniwa::pdu::PduResolvedKey& pdu_key, std::span<const std::byte> data)
     {
+        //std::cout << "TransferPdu: on_recv_callback triggered for Robot: " << pdu_key.robot << " Channel ID: " << pdu_key.channel_id << std::endl;
         try_transfer();
     }
     void try_transfer();
@@ -88,6 +89,7 @@ private:
     uint64_t owner_epoch_ = 0;
     void on_recv_callback(const hakoniwa::pdu::PduResolvedKey& pdu_key, std::span<const std::byte> data)
     {
+        //std::cout << "TransferAtomicPduGroup: on_recv_callback triggered for Robot: " << pdu_key.robot << " Channel ID: " << pdu_key.channel_id << std::endl;
         try_transfer(pdu_key, data);
     }
     void try_transfer(const hakoniwa::pdu::PduResolvedKey& pdu_key, std::span<const std::byte> data);

@@ -33,6 +33,13 @@ hakoniwa::pdu::bridge::TransferPdu::TransferPdu(
             .robot = endpoint_pdu_key_.robot,
             .channel_id = channel_id
         };
+        #ifdef ENABLE_DEBUG_MESSAGES
+        std::cout << "INFO: Registering PDU for event-driven transfer: "
+                  << " robot=" << pdu_resolved_key.robot
+                  << " pdu_name=" << config_key.pdu_name
+                  << " channel=" << pdu_resolved_key.channel_id
+                  << std::endl;
+        #endif
         src_endpoint_->subscribe_on_recv_callback(
             pdu_resolved_key,
             [this](const hakoniwa::pdu::PduResolvedKey& pdu_key, std::span<const std::byte> data) {
@@ -170,6 +177,13 @@ hakoniwa::pdu::bridge::TransferAtomicPduGroup::TransferAtomicPduGroup(
             .robot = key.robot_name,
             .channel_id = channel_id
         };
+        #ifdef ENABLE_DEBUG_MESSAGES
+        std::cout << "INFO: Registering atomic group PDU: "
+                  << " robot=" << pdu_resolved_key.robot
+                  << " pdu_name=" << key.pdu_name
+                  << " channel=" << pdu_resolved_key.channel_id
+                  << std::endl;
+        #endif
         transfer_atomic_pdu_group_.emplace_back(std::make_unique<hakoniwa::pdu::PduResolvedKey>(pdu_resolved_key));
         if (immediate_policy) {
             immediate_policy->add_pdu_key(pdu_resolved_key);
@@ -201,15 +215,26 @@ void hakoniwa::pdu::bridge::TransferAtomicPduGroup::cyclic_trigger()
 void hakoniwa::pdu::bridge::TransferAtomicPduGroup::try_transfer(
     const hakoniwa::pdu::PduResolvedKey& pdu_key, std::span<const std::byte> data)
 {
+    #ifdef ENABLE_DEBUG_MESSAGES
+    std::cout << "INFO: TransferAtomicPduGroup try_transfer called for Robot: "
+              << pdu_key.robot << " Channel ID: " << pdu_key.channel_id << std::endl;
+    #endif
     (void)pdu_key; // Not used in this context as we transfer the whole group
     (void)data;    // Not used
     if (!is_active_) {
+        std::cerr << "INFO: TransferAtomicPduGroup is inactive. Skipping transfer." << std::endl;
         return;
     }
     // Event-driven policies gate transfers by should_transfer().
     if (policy_->should_transfer(pdu_key, time_source_)) {
         try_transfer_group();
         policy_->on_transferred(pdu_key, time_source_);
+    }
+    else {
+        #ifdef ENABLE_DEBUG_MESSAGES
+        std::cout << "INFO: TransferAtomicPduGroup transfer not allowed by policy for Robot: "
+                  << pdu_key.robot << " Channel ID: " << pdu_key.channel_id << std::endl;
+        #endif
     }
 }
 
