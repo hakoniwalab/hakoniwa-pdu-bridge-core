@@ -27,12 +27,12 @@ hakoniwa::pdu::bridge::TransferPdu::TransferPdu(
         .robot = endpoint_pdu_key_.robot,
         .channel_id = channel_id
     };
+    PduResolvedKey pdu_resolved_key{
+        .robot = endpoint_pdu_key_.robot,
+        .channel_id = channel_id
+    };
     if (!policy_->is_cyclic_trigger()) {
         // Register callback for event-driven triggers
-        PduResolvedKey pdu_resolved_key{
-            .robot = endpoint_pdu_key_.robot,
-            .channel_id = channel_id
-        };
         #ifdef ENABLE_DEBUG_MESSAGES
         std::cout << "INFO: Registering PDU for event-driven transfer: "
                   << " robot=" << pdu_resolved_key.robot
@@ -45,6 +45,12 @@ hakoniwa::pdu::bridge::TransferPdu::TransferPdu(
             [this](const hakoniwa::pdu::PduResolvedKey& pdu_key, std::span<const std::byte> data) {
                 this->on_recv_callback(pdu_key, data);
             }
+        );
+    } else {
+        // Suppress endpoint "no subscribers" log for cyclic policies (e.g., ticker).
+        src_endpoint_->subscribe_on_recv_callback(
+            pdu_resolved_key,
+            [](const hakoniwa::pdu::PduResolvedKey&, std::span<const std::byte>) {}
         );
     }
     if (auto immediate_policy = std::dynamic_pointer_cast<ImmediatePolicy>(policy_)) {

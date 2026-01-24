@@ -184,10 +184,45 @@ int main()
 
 Use the ready-to-run config `config/tutorials/bridge-immediate.json` and the endpoint container in `config/tutorials/endpoint_container.json`.
 
+### Immediate (default example)
+
 Terminal 1 (bridge daemon):
 ```bash
 ./build/hakoniwa-pdu-bridge \
   config/tutorials/bridge-immediate.json \
+  1000 \
+  config/tutorials/endpoint_container.json \
+  node1
+```
+
+Terminal 2 (reader, destination):
+```bash
+build/examples/bridge_reader \
+  config/tutorials/endpoint/reader.json \
+  Drone \
+  pos \
+  10
+```
+
+Terminal 3 (writer, source):
+```bash
+build/examples/bridge_writer \
+  config/tutorials/endpoint/writer.json \
+  Drone \
+  pos \
+  3000
+```
+
+Expected output:
+- `bridge_writer` prints `sent seq=...`
+- `bridge_reader` prints `recv bytes=... text="ts=... seq=..."`
+
+### Throttle (interval 100ms)
+
+Terminal 1 (bridge daemon):
+```bash
+./build/hakoniwa-pdu-bridge \
+  config/tutorials/bridge-throttle.json \
   1000 \
   config/tutorials/endpoint_container.json \
   node1
@@ -214,6 +249,41 @@ build/examples/bridge_writer \
 Expected output:
 - `bridge_writer` prints `sent seq=...`
 - `bridge_reader` prints `recv bytes=... text="ts=... seq=..."`
+- Transfer happens at most once per 100ms even if the writer is faster.
+
+### Ticker (interval 100ms)
+
+Terminal 1 (bridge daemon):
+```bash
+./build/hakoniwa-pdu-bridge \
+  config/tutorials/bridge-ticker.json \
+  5000 \
+  config/tutorials/endpoint_container.json \
+  node1
+```
+
+Terminal 2 (reader, destination):
+```bash
+build/examples/bridge_reader \
+  config/tutorials/endpoint/reader.json \
+  Drone \
+  pos \
+  10
+```
+
+Terminal 3 (writer, source):
+```bash
+build/examples/bridge_writer \
+  config/tutorials/endpoint/writer.json \
+  Drone \
+  pos \
+  10
+```
+
+Expected output:
+- `bridge_writer` prints `sent seq=...`
+- `bridge_reader` prints `recv bytes=... text="ts=... seq=..."`
+- Transfer occurs every 100ms even if the writer only sends every 5 seconds.
 
 ## Policy-specific tutorials
 
