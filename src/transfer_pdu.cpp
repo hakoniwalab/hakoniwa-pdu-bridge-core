@@ -65,12 +65,14 @@ void hakoniwa::pdu::bridge::TransferPdu::try_transfer() {
         return;
     }
     if (policy_->should_transfer(endpoint_pdu_resolved_key_, time_source_)) {
+        #ifdef ENABLE_DEBUG_MESSAGES
         std::cout << "INFO: Bridge transfer triggered: " << config_pdu_key_.id
                   << " src=" << src_endpoint_->get_name()
                   << " dst=" << dst_endpoint_->get_name()
                   << " robot=" << endpoint_pdu_resolved_key_.robot
                   << " channel=" << endpoint_pdu_resolved_key_.channel_id
                   << std::endl;
+        #endif
         transfer();
         policy_->on_transferred(endpoint_pdu_resolved_key_, time_source_);
     }
@@ -133,12 +135,13 @@ void hakoniwa::pdu::bridge::TransferPdu::transfer() {
                   << "." << endpoint_pdu_key_.pdu << " to destination: " << write_err << std::endl;
         return;
     }
-
+    #ifdef ENABLE_DEBUG_MESSAGES
     std::cout << "INFO: Bridge transfer completed: " << config_pdu_key_.id
               << " bytes=" << received_size
               << " src=" << src_endpoint_->get_name()
               << " dst=" << dst_endpoint_->get_name()
               << std::endl;
+    #endif
 }
 
 bool hakoniwa::pdu::bridge::TransferPdu::accept_epoch(uint64_t pdu_epoch) {

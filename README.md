@@ -1,91 +1,94 @@
 # hakoniwa-pdu-bridge
 
-`hakoniwa-pdu-bridge` は、PDU（Protocol Data Unit）チャネル間のデータフローを **時間的な観点から制御する** ことに特化した、論理的な転送コンポーネントです。
+`hakoniwa-pdu-bridge` is a logical transfer component that focuses on **controlling the timing of data flow** between PDU (Protocol Data Unit) channels.
 
-本リポジトリの核心は、**「いつ・どのデータを送るか」という転送ポリシー** と **「どう送るか」という通信プロトコル（TCP/UDP/SHM等）** を **意図的に分離** する設計思想にあります。
-
-このブリッジは転送の判断だけを行い、データの送受は `hakoniwa-pdu-endpoint` 側に委譲します。
+The core design is to **separate the decision of when to transfer** from **how to communicate** (TCP/UDP/SHM, etc.). This bridge only decides when to transfer and delegates actual I/O to `hakoniwa-pdu-endpoint`.
 
 ---
 
 ## What this is / isn't
 
 **This is:**
-- PDUの「論理フロー」を宣言するための転送レイヤ
-- どのPDUを、どこへ、**どの時間モデルで**流すかを定義する
+- A transfer layer that declares logical PDU flows
+- A definition of which PDUs flow where, under which time model
 
 **This is NOT:**
-- 通信プロトコル実装（TCP/UDP/WebSocket/Zenoh/SHMなど）
-- 到達保証、リトライ、永続キュー
-- Endpoint JSON をロードする仕組み（endpoint loader は `hakoniwa-pdu-endpoint` の責務）
+- A transport implementation (TCP/UDP/WebSocket/Zenoh/SHM, etc.)
+- Delivery guarantees, retries, or persistent queues
+- An endpoint JSON loader (handled by `hakoniwa-pdu-endpoint`)
 
 ---
 
-## アーキテクチャ
+## Architecture
 
-### 主要コンポーネント
+### Main components
 
-- **BridgeDaemon**: `main()` で `BridgeCore` を構築し、ループ実行する起点。
-- **BridgeCore**: `BridgeConnection` を保持し、`cyclic_trigger()` を回して転送を駆動。
-- **BridgeConnection**: 1つの `source` と複数の `destinations` を束ね、`TransferPdu` を保持。
-- **TransferPdu / TransferAtomicPduGroup**: 単一PDUまたはPDUグループの転送を行う。
-- **Policy**: `immediate` / `throttle` / `ticker` の時間モデルを提供。
-- **TimeSource**: `real` / `virtual` / `hakoniwa` の時間基準を提供。
-- **EndpointContainer**: endpoint を生成・管理（`hakoniwa-pdu-endpoint` 側）。
+- **BridgeDaemon**: entry point that builds and runs `BridgeCore`.
+- **BridgeCore**: holds `BridgeConnection`s and drives `cyclic_trigger()`.
+- **BridgeConnection**: binds a source to destinations and holds `TransferPdu`.
+- **TransferPdu / TransferAtomicPduGroup**: transfers a single PDU or an atomic PDU group.
+- **Policy**: `immediate` / `throttle` / `ticker` time models.
+- **TimeSource**: `real` / `virtual` / `hakoniwa` (see note below).
+- **EndpointContainer**: endpoint creation and management (`hakoniwa-pdu-endpoint`).
 
-### データフロー（概略）
+### Data flow (high level)
 
-1. `BridgeDaemon` が `bridge.json` を読み込み、`BridgeCore` を組み立てる。
-2. `BridgeCore` が `BridgeConnection` を通じて `TransferPdu` を管理する。
-3. `TransferPdu` が policy 判定により、src endpoint から dst endpoint へ転送する。
+1. `BridgeDaemon` loads `bridge.json` and builds `BridgeCore`.
+2. `BridgeCore` manages `BridgeConnection`s and their `TransferPdu`s.
+3. `TransferPdu` applies policy decisions to move data from src to dst endpoints.
 
 ---
 
-## ビルド
+## Build
 
-### 依存関係
+### Dependencies
 
-- C++20 対応コンパイラ (GCC, Clangなど)
-- CMake 3.16以上
-- Hakoniwa コアライブラリ ( `/usr/local/hakoniwa` にインストール済み)
-- `hakoniwa-pdu-endpoint` サブモジュール
+- C++20 compiler (GCC/Clang)
+- CMake 3.16+
+- Hakoniwa core library (installed under `/usr/local/hakoniwa`)
+- `hakoniwa-pdu-endpoint` submodule
 
-### 手順
+### Steps
 
 ```bash
-# 1. submodule 初期化
+# 1. init submodule
 git submodule update --init --recursive
 
-# 2. out-of-source ビルド
+# 2. out-of-source build
 cmake -S . -B build
 cmake --build build
 ```
 
-`build/hakoniwa-pdu-bridge` が生成されます。
+The binary `build/hakoniwa-pdu-bridge` will be generated.
 
-### Hakoniwa コアのインストール注意
+To build the example programs:
 
-- ヘッダ: `/usr/local/hakoniwa/include/hakoniwa`
-- ライブラリ: `/usr/local/hakoniwa/lib`
+```bash
+cmake -S . -B build -DHAKO_PDU_BRIDGE_BUILD_EXAMPLES=ON
+cmake --build build
+```
 
-実行時に共有ライブラリが見つからない場合は、`LD_LIBRARY_PATH`（Linux）や `DYLD_LIBRARY_PATH`（macOS）に追加してください。
+### Hakoniwa core install notes
+
+- Headers: `/usr/local/hakoniwa/include/hakoniwa`
+- Libraries: `/usr/local/hakoniwa/lib`
+
+If shared libraries are not found at runtime, add `LD_LIBRARY_PATH` (Linux) or `DYLD_LIBRARY_PATH` (macOS).
 
 ---
 
-## 実行
-
-`hakoniwa-pdu-bridge` は以下の引数を取ります。
+## Run
 
 ```bash
 ./build/hakoniwa-pdu-bridge <bridge.json> <delta_time_step_usec> <endpoint_container.json> [node_name]
 ```
 
-- `bridge.json`: 本リポジトリが読む設定ファイル
-- `delta_time_step_usec`: タイムソースの刻み幅（マイクロ秒）
-- `endpoint_container.json`: endpoint loader が読む設定ファイル（`hakoniwa-pdu-endpoint` 側の仕様）
-- `node_name`: 任意。省略時は `node1`
+- `bridge.json`: config for this repository
+- `delta_time_step_usec`: time step for the time source (microseconds)
+- `endpoint_container.json`: config for endpoint loader (`hakoniwa-pdu-endpoint`)
+- `node_name`: optional, default `node1`
 
-### 実行例（単一ノード・ローカル）
+### Example (single node, local)
 
 ```bash
 ./build/hakoniwa-pdu-bridge \
@@ -95,19 +98,17 @@ cmake --build build
   node1
 ```
 
-### 実行例（2ノード・TCP構成）
-
-以下はテスト用設定を参照する例です。
+### Example (two nodes, TCP)
 
 ```bash
-# node1 側
+# node1
 ./build/hakoniwa-pdu-bridge \
   test/config/tcp/bridge.json \
   1000 \
   test/config/tcp/endpoints.json \
   node1
 
-# node2 側
+# node2
 ./build/hakoniwa-pdu-bridge \
   test/config/tcp/bridge.json \
   1000 \
@@ -117,9 +118,9 @@ cmake --build build
 
 ---
 
-## テスト
+## Tests
 
-GTest を使用します。ビルド後に `ctest` を実行してください。
+Use GTest. After building, run `ctest`.
 
 ```bash
 cmake -S . -B build
@@ -127,7 +128,7 @@ cmake --build build
 ctest --test-dir build
 ```
 
-必要に応じて `HAKO_TEST_CONFIG_DIR` でテスト用設定のルートを変更できます。
+You can override the config root with `HAKO_TEST_CONFIG_DIR`.
 
 ```bash
 HAKO_TEST_CONFIG_DIR=/path/to/test/config ctest --test-dir build
@@ -135,30 +136,53 @@ HAKO_TEST_CONFIG_DIR=/path/to/test/config ctest --test-dir build
 
 ---
 
-## 転送設定 (Bridge Configuration)
+## Config check tool
 
-`bridge.json` は `config/schema/bridge-schema.json` に準拠します。
+There is a helper script to validate `bridge.json` and check referenced paths.
 
-必須トップレベル項目:
-- `version` (現在は `2.0.0`)
-- `time_source_type` (`real` / `virtual` / `hakoniwa`)
+```bash
+python3 tools/check_bridge_config.py path/to/bridge.json
+python3 tools/check_bridge_config.py path/to/bridge.json --endpoint-container path/to/endpoint_container.json
+```
+
+Notes:
+- Schema validation requires the `jsonschema` Python package.
+- Path checks ensure `config_path` entries exist on disk (resolved relative to each JSON file).
+
+---
+
+## Tutorials
+
+Policy-specific tutorials live under `docs/tutorials/`:
+
+- `docs/tutorials/README.md`
+- `docs/tutorials/immediate.md`
+- `docs/tutorials/throttle.md`
+- `docs/tutorials/ticker.md`
+
+---
+
+## Bridge configuration
+
+`bridge.json` must follow `config/schema/bridge-schema.json`.
+
+Required top-level fields:
+- `version` (currently `2.0.0`)
 - `transferPolicies`
 - `nodes`
-- `endpoints`
-- `wireLinks`
 - `pduKeyGroups`
 - `connections`
 
-主な制約:
-- IDは `^[A-Za-z][A-Za-z0-9_\-\.]*$`
-- `throttle` と `ticker` は `intervalMs` 必須
-- `immediate` は `intervalMs` を持てない
+Constraints:
+- IDs must match `^[A-Za-z][A-Za-z0-9_\-\.]*$`
+- `throttle` and `ticker` require `intervalMs`
+- `immediate` must not specify `intervalMs`
 
-`endpoints` 内の `config_path` は endpoint loader に渡す **参照パス** であり、本リポジトリでは読み込みません。
+Notes:
+- `time_source_type` can be in `bridge.json`, but the current implementation uses CLI `delta_time_step_usec` and a fixed `real` time source.
+- `endpoints` / `wireLinks` are not used by the current implementation.
 
-### スキーマ検証
-
-任意の JSON Schema バリデータで検証できます。例（`ajv` がある場合）:
+### Schema validation
 
 ```bash
 ajv validate -s config/schema/bridge-schema.json -d bridge.json
@@ -166,11 +190,11 @@ ajv validate -s config/schema/bridge-schema.json -d bridge.json
 
 ---
 
-## Endpoint Container 設定
+## Endpoint container config
 
-`endpoint_container.json` は `hakoniwa-pdu-endpoint` が読み込む **EndpointContainer の設定** です。形式は配列で、`nodeId` ごとに endpoint をまとめます。
+`endpoint_container.json` is the **EndpointContainer** config read by `hakoniwa-pdu-endpoint`. It is a list grouped by `nodeId`.
 
-例（`test/config/core_flow/endpoints.json`）:
+Example (`test/config/core_flow/endpoints.json`):
 
 ```json
 [
@@ -184,61 +208,47 @@ ajv validate -s config/schema/bridge-schema.json -d bridge.json
 ]
 ```
 
-`config_path` は **このファイルの場所からの相対パス** で解決されます。
+`config_path` is resolved **relative to the endpoint_container.json file**.
 
 ---
 
-## 転送ポリシー（概要）
+## Transfer policies (overview)
 
-- **immediate**: 更新と同時に転送する。
-- **throttle**: 更新は追従するが、最小間隔を満たした時だけ転送する。
-- **ticker**: 周期ごとに最新値を転送する（更新がなくても送る）。
+- **immediate**: transfer on update (lowest latency)
+- **throttle**: follow updates but enforce a minimum interval
+- **ticker**: send the latest value on a fixed interval, even without updates
 
----
+### immediate (atomic)
 
-## 転送ポリシー詳細
+If `immediate` has `atomic: true`, all PDUs in the same `transferPdus` group are treated as one frame.
 
-### immediate
+- transfer only after all target PDUs have been updated
+- frame time `T_frame` is the time observed by the bridge
+- does not guarantee identical generation timestamps for each PDU
 
-更新された瞬間に転送します。低遅延・同期用途向け。
-
-### throttle
-
-更新イベントは受けるが、前回転送から `intervalMs` 以上経過した場合のみ転送します。
-
-### ticker
-
-一定周期で最新値を転送します。更新がなくても送られます。
-
-### atomic immediate（フレーム単位の即時転送）
-
-`immediate` に `atomic: true` を指定すると、同一 `transferPdus` 内の PDU 群を1フレームとして扱います。
-
-- 全対象PDUの更新が揃った時点でフレーム転送
-- ブリッジが観測した時刻 `T_frame` を暗黙的に扱う
-- 各PDUの生成時刻の厳密一致は保証しない
-
-**重要:** `atomic: true` を使う場合は、箱庭時刻通知用の `hako_msgs/SimTime` を必ず含めてください。
+**Important:** When using `atomic: true`, include `hako_msgs/SimTime` to signal time.
 
 ---
 
-## 時間ソース (Time Source)
+## Time source
 
-`time_source_type` は `throttle`/`ticker` の時間基準となる重要な設定です。
+`time_source_type` defines the time base used by `throttle`/`ticker`.
 
-- `real`: システムの壁時計時間
-- `virtual`: 外部提供の仮想時間
-- `hakoniwa`: Hakoniwa コア時間と同期
+- `real`: system wall-clock time
+- `virtual`: externally provided virtual time
+- `hakoniwa`: synchronized with Hakoniwa core time
 
----
-
-## Runtime Delegation（epoch の扱い）
-
-owner 切替の瞬間に旧/新が同時送信する可能性があるため、受信側は **最新 epoch 以外を捨てる** ことが前提です。ポリシーには混ぜず、`TransferPdu` 側で判定する設計です。
+**Current implementation:** uses `real` with CLI `delta_time_step_usec` and ignores `time_source_type`.
 
 ---
 
-## 最小構成例
+## Runtime delegation (epoch)
+
+At owner switching boundaries, old and new owners may send concurrently, so receivers must discard stale epochs. This is handled in `TransferPdu` and not in policy logic.
+
+---
+
+## Minimal example
 
 ```json
 {
@@ -250,25 +260,6 @@ owner 切替の瞬間に旧/新が同時送信する可能性があるため、�
   "nodes": [
     { "id": "node1" },
     { "id": "node2" }
-  ],
-  "endpoints": [
-    {
-      "nodeId": "node1",
-      "endpoints": [
-        { "id": "n1-src", "mode": "local", "config_path": "config/sample/endpoint/n1-epSrc.json", "direction": "out" },
-        { "id": "n1-dst", "mode": "wire",  "config_path": "config/sample/endpoint/n1-epDst.json", "direction": "in" }
-      ]
-    },
-    {
-      "nodeId": "node2",
-      "endpoints": [
-        { "id": "n2-src", "mode": "wire",  "config_path": "config/sample/endpoint/n2-epSrc.json", "direction": "in" },
-        { "id": "n2-dst", "mode": "local", "config_path": "config/sample/endpoint/n2-epDst.json", "direction": "out" }
-      ]
-    }
-  ],
-  "wireLinks": [
-    { "from": "n1-dst", "to": "n2-src" }
   ],
   "pduKeyGroups": {
     "drone_data": [

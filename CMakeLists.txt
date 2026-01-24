@@ -50,3 +50,7 @@ enable_testing()
 # Add our test subdirectory
 add_subdirectory(test)
 
+option(HAKO_PDU_BRIDGE_BUILD_EXAMPLES "Build bridge examples" OFF)
+if(HAKO_PDU_BRIDGE_BUILD_EXAMPLES)
+  add_subdirectory(examples)
+endif()

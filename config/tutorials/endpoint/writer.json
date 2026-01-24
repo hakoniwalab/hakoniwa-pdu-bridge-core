@@ -1,0 +1,6 @@
+{
+  "name": "tutorial-writer",
+  "pdu_def_path": "../../../hakoniwa-pdu-endpoint/config/sample/comm/hakoniwa/pdudef.json",
+  "cache": "../cache/buffer.json",
+  "comm": "../comm/tcp_client_out_9000.json"
+}

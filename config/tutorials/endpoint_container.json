@@ -1,0 +1,9 @@
+[
+  {
+    "nodeId": "node1",
+    "endpoints": [
+      { "id": "n1-epSrc", "mode": "local", "config_path": "endpoint/bridge-src.json", "direction": "in" },
+      { "id": "n1-epDst", "mode": "local", "config_path": "endpoint/bridge-dst.json", "direction": "out" }
+    ]
+  }
+]

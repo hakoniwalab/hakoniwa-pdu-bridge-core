@@ -162,6 +162,10 @@
           "type": "string",
           "enum": ["immediate", "throttle", "ticker"]
         },
+        "atomic": {
+          "type": "boolean",
+          "description": "Only valid for immediate. When true, all PDUs in a transfer group are treated as an atomic frame."
+        },
         "intervalMs": {
           "type": "integer",
           "minimum": 1,
@@ -178,6 +182,12 @@
             "properties": { "type": { "enum": ["throttle", "ticker"] } }
           },
           "then": { "required": ["intervalMs"] }
+        },
+        {
+          "if": {
+            "properties": { "type": { "enum": ["throttle", "ticker"] } }
+          },
+          "then": { "not": { "required": ["atomic"] } }
         }
       ]
     },

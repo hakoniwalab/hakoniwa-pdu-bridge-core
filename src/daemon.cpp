@@ -63,7 +63,7 @@ int main(int argc, char* argv[]) {
 
     std::cout << "Bridge core loaded for node " << node_name << ". Running... (Press Ctrl+C to stop)" << std::endl;
     while (g_core->cyclic_trigger()) {
-        
+        time_source->sleep_delta_time();
     }
     std::cout << "Bridge core stopped." << std::endl;
 

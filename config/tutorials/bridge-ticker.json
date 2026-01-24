@@ -1,0 +1,38 @@
+{
+  "version": "2.0.0",
+  "time_source_type": "real",
+  "transferPolicies": {
+    "ticker_policy": { "type": "ticker", "intervalMs": 1000 }
+  },
+  "nodes": [
+    { "id": "node1" }
+  ],
+  "endpoints": [
+    {
+      "nodeId": "node1",
+      "endpoints": [
+        { "id": "n1-epSrc", "mode": "local", "config_path": "endpoint/bridge-src.json", "direction": "in" },
+        { "id": "n1-epDst", "mode": "local", "config_path": "endpoint/bridge-dst.json", "direction": "out" }
+      ]
+    }
+  ],
+  "wireLinks": [],
+  "pduKeyGroups": {
+    "pdu_group1": [
+      { "id": "Drone.pos", "robot_name": "Drone", "pdu_name": "pos" }
+    ]
+  },
+  "connections": [
+    {
+      "id": "conn1",
+      "nodeId": "node1",
+      "source": { "endpointId": "n1-epSrc" },
+      "destinations": [
+        { "endpointId": "n1-epDst" }
+      ],
+      "transferPdus": [
+        { "pduKeyGroupId": "pdu_group1", "policyId": "ticker_policy" }
+      ]
+    }
+  ]
+}
