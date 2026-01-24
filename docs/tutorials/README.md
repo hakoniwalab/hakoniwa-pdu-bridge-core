@@ -257,7 +257,7 @@ Terminal 1 (bridge daemon):
 ```bash
 ./build/hakoniwa-pdu-bridge \
   config/tutorials/bridge-ticker.json \
-  5000 \
+  1000 \
   config/tutorials/endpoint_container.json \
   node1
 ```
@@ -277,7 +277,7 @@ build/examples/bridge_writer \
   config/tutorials/endpoint/writer.json \
   Drone \
   pos \
-  10
+  5000
 ```
 
 Expected output:
