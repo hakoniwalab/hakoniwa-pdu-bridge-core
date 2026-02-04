@@ -4,14 +4,77 @@ project(hakoniwa-pdu-bridge CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Add include directories
+# Bridge public headers
 include_directories(include)
-# This allows includes like #include "hakoniwa/pdu/endpoint.hpp"
-include_directories(hakoniwa-pdu-endpoint/include)
 
-# The submodule 'hakoniwa-pdu-endpoint' will fetch nlohmann_json.
-# We add the subdirectory first, making its targets (including fetched ones) available.
-add_subdirectory(hakoniwa-pdu-endpoint)
+include(FetchContent)
+FetchContent_Declare(
+  nlohmann_json
+  GIT_REPOSITORY https://github.com/nlohmann/json.git
+  GIT_TAG v3.11.3
+)
+FetchContent_MakeAvailable(nlohmann_json)
+
+set(HAKO_PDU_ENDPOINT_PREFIX "/usr/local/hakoniwa" CACHE PATH
+    "Install prefix of hakoniwa-pdu-endpoint")
+find_path(HAKO_PDU_ENDPOINT_INCLUDE_DIR
+  NAMES hakoniwa/pdu/endpoint.hpp
+  HINTS
+    "${HAKO_PDU_ENDPOINT_PREFIX}/include"
+    "/usr/local/include"
+    "/usr/local/hakoniwa/include"
+)
+find_library(HAKO_PDU_ENDPOINT_LIBRARY
+  NAMES hakoniwa_pdu_endpoint
+  HINTS
+    "${HAKO_PDU_ENDPOINT_PREFIX}/lib"
+    "/usr/local/lib"
+    "/usr/local/hakoniwa/lib"
+)
+find_library(HAKO_ASSETS_LIBRARY
+  NAMES assets
+  HINTS
+    "${HAKO_PDU_ENDPOINT_PREFIX}/lib"
+    "/usr/local/hakoniwa/lib"
+    "/usr/local/lib"
+)
+find_library(HAKO_SHAKOC_LIBRARY
+  NAMES shakoc
+  HINTS
+    "${HAKO_PDU_ENDPOINT_PREFIX}/lib"
+    "/usr/local/hakoniwa/lib"
+    "/usr/local/lib"
+)
+
+if(NOT HAKO_PDU_ENDPOINT_INCLUDE_DIR)
+  message(FATAL_ERROR "hakoniwa-pdu-endpoint header not found. Set HAKO_PDU_ENDPOINT_INCLUDE_DIR.")
+endif()
+if(NOT HAKO_PDU_ENDPOINT_LIBRARY)
+  message(FATAL_ERROR "hakoniwa-pdu-endpoint library not found. Set HAKO_PDU_ENDPOINT_LIBRARY.")
+endif()
+
+set(HAKO_ENDPOINT_EXTRA_LIBS "")
+list(APPEND HAKO_ENDPOINT_EXTRA_LIBS nlohmann_json::nlohmann_json)
+if(HAKO_ASSETS_LIBRARY)
+  list(APPEND HAKO_ENDPOINT_EXTRA_LIBS "${HAKO_ASSETS_LIBRARY}")
+else()
+  list(APPEND HAKO_ENDPOINT_EXTRA_LIBS assets)
+endif()
+if(HAKO_SHAKOC_LIBRARY)
+  list(APPEND HAKO_ENDPOINT_EXTRA_LIBS "${HAKO_SHAKOC_LIBRARY}")
+else()
+  list(APPEND HAKO_ENDPOINT_EXTRA_LIBS shakoc)
+endif()
+
+if(NOT TARGET hakoniwa_pdu_endpoint)
+  add_library(hakoniwa_pdu_endpoint UNKNOWN IMPORTED)
+  set_target_properties(hakoniwa_pdu_endpoint PROPERTIES
+    IMPORTED_LOCATION "${HAKO_PDU_ENDPOINT_LIBRARY}"
+    INTERFACE_INCLUDE_DIRECTORIES
+      "${HAKO_PDU_ENDPOINT_INCLUDE_DIR};${HAKO_PDU_ENDPOINT_INCLUDE_DIR}/hakoniwa;${HAKO_PDU_ENDPOINT_INCLUDE_DIR}/hakoniwa/pdu"
+    INTERFACE_LINK_LIBRARIES "${HAKO_ENDPOINT_EXTRA_LIBS}"
+  )
+endif()
 
 # Find all our source files
 file(GLOB_RECURSE PDU_BRIDGE_SOURCES "src/*.cpp")

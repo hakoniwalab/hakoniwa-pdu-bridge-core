@@ -46,16 +46,46 @@ The core design is to **separate the decision of when to transfer** from **how t
 - C++20 compiler (GCC/Clang)
 - CMake 3.16+
 - Hakoniwa core library (installed under `/usr/local/hakoniwa`)
-- `hakoniwa-pdu-endpoint` submodule
+- Installed `hakoniwa-pdu-endpoint` library and headers
+
+### hakoniwa-pdu-endpoint install layout
+
+This project expects the following layout for `hakoniwa-pdu-endpoint`:
+
+```
+<prefix>/
+  include/hakoniwa/pdu/endpoint.hpp
+  lib/libhakoniwa_pdu_endpoint.(a|so|dylib)
+```
+
+Default prefix is `/usr/local/hakoniwa`. You can override it with:
+
+```bash
+cmake -S . -B build -DHAKO_PDU_ENDPOINT_PREFIX=/path/to/prefix
+```
+
+If your layout is non-standard, set these explicitly:
+
+```bash
+cmake -S . -B build \
+  -DHAKO_PDU_ENDPOINT_INCLUDE_DIR=/path/to/include \
+  -DHAKO_PDU_ENDPOINT_LIBRARY=/path/to/libhakoniwa_pdu_endpoint.so
+```
+
+Note: `hakoniwa-pdu-endpoint` depends on Hakoniwa core libs (`assets`, `shakoc`). Ensure they are in your library path, typically:
+
+```
+/usr/local/hakoniwa/lib
+```
 
 ### Steps
 
 ```bash
-# 1. init submodule
-git submodule update --init --recursive
+# 1. out-of-source build
+cmake -S . -B build \
+  -DHAKO_PDU_ENDPOINT_PREFIX=/usr/local/hakoniwa
 
-# 2. out-of-source build
-cmake -S . -B build
+# 2. build
 cmake --build build
 ```
 
@@ -72,6 +102,9 @@ cmake --build build
 
 - Headers: `/usr/local/hakoniwa/include/hakoniwa`
 - Libraries: `/usr/local/hakoniwa/lib`
+- `hakoniwa-pdu-endpoint` default search prefix: `/usr/local/hakoniwa`
+  - Header auto-detect target: `hakoniwa/pdu/endpoint.hpp`
+  - Library auto-detect target: `libhakoniwa_pdu_endpoint.*`
 
 If shared libraries are not found at runtime, add `LD_LIBRARY_PATH` (Linux) or `DYLD_LIBRARY_PATH` (macOS).
 
