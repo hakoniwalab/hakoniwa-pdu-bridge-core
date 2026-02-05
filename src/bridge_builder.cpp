@@ -53,6 +53,14 @@ namespace hakoniwa::pdu::bridge {
         std::shared_ptr<hakoniwa::pdu::EndpointContainer> endpoint_container)
     {
         BridgeBuildResult result;
+        if (!time_source) {
+            result.error_message = "BridgeLoader: Time source is null";
+            return result;
+        }
+        if (!endpoint_container) {
+            result.error_message = "BridgeLoader: EndpointContainer is null";
+            return result;
+        }
         std::string error_message;
         auto maybe_config = parse(config_file_path, error_message);
         if (!maybe_config) {

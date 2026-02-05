@@ -7,9 +7,6 @@ namespace hakoniwa::pdu::bridge {
 
 BridgeCore::BridgeCore(const std::string& node_name, std::shared_ptr<hakoniwa::time_source::ITimeSource> time_source, std::shared_ptr<hakoniwa::pdu::EndpointContainer> endpoint_container) 
     : node_name_(node_name), is_running_(false), time_source_(time_source), endpoint_container_(endpoint_container) {
-    if (!time_source_) {
-        throw std::runtime_error("BridgeCore: Time source cannot be null.");
-    }
     endpoint_ids_ = endpoint_container_->list_endpoint_ids();
 }
 

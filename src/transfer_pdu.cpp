@@ -2,7 +2,6 @@
 #include "hakoniwa/time_source/time_source.hpp" // For ITimeSource
 #include "hakoniwa/pdu/bridge/policy/immediate_policy.hpp"
 #include <iostream>
-#include <stdexcept> // For error handling
 #include <vector> // For std::vector<std::byte>
 
 hakoniwa::pdu::bridge::TransferPdu::TransferPdu(
@@ -20,7 +19,8 @@ hakoniwa::pdu::bridge::TransferPdu::TransferPdu(
       is_active_(true),
       owner_epoch_(0) {
     if (!src_endpoint_ || !dst_endpoint_) {
-        throw std::runtime_error("TransferPdu: Source or Destination endpoint is null.");
+        is_active_ = false;
+        return;
     }
     auto channel_id = src->get_pdu_channel_id(endpoint_pdu_key_);
     endpoint_pdu_resolved_key_ = {
@@ -172,12 +172,8 @@ hakoniwa::pdu::bridge::TransferAtomicPduGroup::TransferAtomicPduGroup(
       owner_epoch_(0)
 {
     if (!src || !dst) {
-        throw std::runtime_error("TransferAtomicPduGroup: Source or Destination endpoint is null.");
-    }
-
-    // Atomic group is event-driven; cyclic policies are not supported.
-    if (policy_->is_cyclic_trigger()) {
-        throw std::runtime_error("TransferAtomicPduGroup: Cyclic policies are not supported for atomic groups.");
+        is_active_ = false;
+        return;
     }
     auto immediate_policy = std::dynamic_pointer_cast<ImmediatePolicy>(policy_);
     for (const auto& key : config_keys) {

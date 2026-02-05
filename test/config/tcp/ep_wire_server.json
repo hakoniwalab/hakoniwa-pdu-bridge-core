@@ -1,6 +1,6 @@
 {
     "name": "epB_src_wire",
-    "pdu_def_path": "../../../hakoniwa-pdu-endpoint/config/sample/comm/hakoniwa/pdudef.json",
+    "pdu_def_path": "../../../config/sample/endpoint/pdudef.json",
     "cache": "../core_flow/cache/internal_queue.json",
     "comm": "comm_server.json"
 }
