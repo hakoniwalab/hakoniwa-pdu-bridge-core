@@ -7,10 +7,20 @@ void BridgeConnection::add_transfer_pdu(std::unique_ptr<ITransferPdu> pdu) {
     transfer_pdus_.push_back(std::move(pdu));
 }
 
+void BridgeConnection::set_active(bool is_active) {
+    is_active_ = is_active;
+    for (auto& pdu : transfer_pdus_) {
+        pdu->set_active(is_active);
+    }
+}
+
 void BridgeConnection::cyclic_trigger() {
     #ifdef ENABLE_DEBUG_MESSAGES
     std::cout << "DEBUG: BridgeConnection cyclic_trigger called. size=" << transfer_pdus_.size() << std::endl;
     #endif
+    if (!is_active_) {
+        return;
+    }
     for (auto& pdu : transfer_pdus_) {
         pdu->cyclic_trigger();
     }

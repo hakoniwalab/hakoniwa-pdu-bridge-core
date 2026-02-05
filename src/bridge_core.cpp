@@ -53,4 +53,14 @@ void BridgeCore::stop() {
     is_running_ = false;
 }
 
+bool BridgeCore::set_connection_active(const std::string& connection_id, bool is_active) {
+    for (auto& connection : connections_) {
+        if (connection->getConnectionId() == connection_id) {
+            connection->set_active(is_active);
+            return true;
+        }
+    }
+    return false;
+}
+
 } // namespace hakoniwa::pdu::bridge

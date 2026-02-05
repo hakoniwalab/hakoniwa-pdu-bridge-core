@@ -40,6 +40,11 @@ public:
     // Stops the execution loop. This can be called from a different thread.
     void stop();
 
+    // Connection-level control
+    bool set_connection_active(const std::string& connection_id, bool is_active);
+    bool pause_connection(const std::string& connection_id) { return set_connection_active(connection_id, false); }
+    bool resume_connection(const std::string& connection_id) { return set_connection_active(connection_id, true); }
+
 private:
     std::string node_name_;
     std::vector<std::unique_ptr<BridgeConnection>> connections_;

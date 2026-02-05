@@ -18,6 +18,8 @@ public:
     const std::string& getConnectionId() const { return connection_id_; }
 
     void add_transfer_pdu(std::unique_ptr<ITransferPdu> pdu);
+    void set_active(bool is_active);
+    bool is_active() const { return is_active_; }
 
     void cyclic_trigger();
 
@@ -25,7 +27,7 @@ private:
     std::string node_id_;
     std::string connection_id_;
     std::vector<std::unique_ptr<ITransferPdu>> transfer_pdus_;
+    bool is_active_ = true;
 };
 
 } // namespace hakoniwa::pdu::bridge
-
