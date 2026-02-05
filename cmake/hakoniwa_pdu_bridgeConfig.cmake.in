@@ -1,0 +1,65 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+set(HAKO_PDU_ENDPOINT_PREFIX "/usr/local/hakoniwa" CACHE PATH
+    "Install prefix of hakoniwa-pdu-endpoint")
+
+find_path(HAKO_PDU_ENDPOINT_INCLUDE_DIR
+  NAMES hakoniwa/pdu/endpoint.hpp
+  HINTS
+    "${HAKO_PDU_ENDPOINT_PREFIX}/include"
+    "/usr/local/include"
+    "/usr/local/hakoniwa/include"
+)
+find_library(HAKO_PDU_ENDPOINT_LIBRARY
+  NAMES hakoniwa_pdu_endpoint
+  HINTS
+    "${HAKO_PDU_ENDPOINT_PREFIX}/lib"
+    "/usr/local/lib"
+    "/usr/local/hakoniwa/lib"
+)
+find_library(HAKO_ASSETS_LIBRARY
+  NAMES assets
+  HINTS
+    "${HAKO_PDU_ENDPOINT_PREFIX}/lib"
+    "/usr/local/hakoniwa/lib"
+    "/usr/local/lib"
+)
+find_library(HAKO_SHAKOC_LIBRARY
+  NAMES shakoc
+  HINTS
+    "${HAKO_PDU_ENDPOINT_PREFIX}/lib"
+    "/usr/local/hakoniwa/lib"
+    "/usr/local/lib"
+)
+
+if(NOT HAKO_PDU_ENDPOINT_INCLUDE_DIR OR NOT HAKO_PDU_ENDPOINT_LIBRARY)
+  message(FATAL_ERROR "hakoniwa-pdu-endpoint not found. Set HAKO_PDU_ENDPOINT_PREFIX or HAKO_PDU_ENDPOINT_INCLUDE_DIR/HAKO_PDU_ENDPOINT_LIBRARY.")
+endif()
+
+set(HAKO_ENDPOINT_EXTRA_LIBS "")
+find_dependency(nlohmann_json)
+list(APPEND HAKO_ENDPOINT_EXTRA_LIBS nlohmann_json::nlohmann_json)
+if(HAKO_ASSETS_LIBRARY)
+  list(APPEND HAKO_ENDPOINT_EXTRA_LIBS "${HAKO_ASSETS_LIBRARY}")
+else()
+  list(APPEND HAKO_ENDPOINT_EXTRA_LIBS assets)
+endif()
+if(HAKO_SHAKOC_LIBRARY)
+  list(APPEND HAKO_ENDPOINT_EXTRA_LIBS "${HAKO_SHAKOC_LIBRARY}")
+else()
+  list(APPEND HAKO_ENDPOINT_EXTRA_LIBS shakoc)
+endif()
+
+if(NOT TARGET hakoniwa_pdu_endpoint)
+  add_library(hakoniwa_pdu_endpoint UNKNOWN IMPORTED)
+  set_target_properties(hakoniwa_pdu_endpoint PROPERTIES
+    IMPORTED_LOCATION "${HAKO_PDU_ENDPOINT_LIBRARY}"
+    INTERFACE_INCLUDE_DIRECTORIES
+      "${HAKO_PDU_ENDPOINT_INCLUDE_DIR};${HAKO_PDU_ENDPOINT_INCLUDE_DIR}/hakoniwa;${HAKO_PDU_ENDPOINT_INCLUDE_DIR}/hakoniwa/pdu"
+    INTERFACE_LINK_LIBRARIES "${HAKO_ENDPOINT_EXTRA_LIBS}"
+  )
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/hakoniwa_pdu_bridgeTargets.cmake")

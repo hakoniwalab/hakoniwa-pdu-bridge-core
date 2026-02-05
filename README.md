@@ -98,6 +98,31 @@ cmake -S . -B build -DHAKO_PDU_BRIDGE_BUILD_EXAMPLES=ON
 cmake --build build
 ```
 
+### Helper scripts
+
+```bash
+# Build only
+./build.bash
+
+# Build + install to /usr/local/hakoniwa
+./install.bash
+
+# Uninstall files installed by install.bash
+./uninstall.bash
+```
+
+### Install layout
+
+`install.bash` uses `/usr/local/hakoniwa` as the install prefix.
+
+Installed files:
+- Headers: `/usr/local/hakoniwa/include/hakoniwa/pdu/bridge/*`
+- Library: `/usr/local/hakoniwa/lib/libhakoniwa_pdu_bridge_lib.a`
+- CMake package:
+  - `/usr/local/hakoniwa/lib/cmake/hakoniwa_pdu_bridge/hakoniwa_pdu_bridgeConfig.cmake`
+  - `/usr/local/hakoniwa/lib/cmake/hakoniwa_pdu_bridge/hakoniwa_pdu_bridgeConfigVersion.cmake`
+  - `/usr/local/hakoniwa/lib/cmake/hakoniwa_pdu_bridge/hakoniwa_pdu_bridgeTargets.cmake`
+
 ### Hakoniwa core install notes
 
 - Headers: `/usr/local/hakoniwa/include/hakoniwa`

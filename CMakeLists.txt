@@ -4,6 +4,8 @@ project(hakoniwa-pdu-bridge CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+include(CMakePackageConfigHelpers)
+
 # Bridge public headers
 include_directories(include)
 
@@ -83,6 +85,11 @@ list(REMOVE_ITEM PDU_BRIDGE_LIB_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/daemon.
 
 # Create a library from the source files (excluding main)
 add_library(hakoniwa_pdu_bridge_lib ${PDU_BRIDGE_LIB_SOURCES})
+target_include_directories(hakoniwa_pdu_bridge_lib
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
 
 # Add the executable
 add_executable(hakoniwa-pdu-bridge src/daemon.cpp)
@@ -95,7 +102,7 @@ if(APPLE)
   )
 endif()
 
-target_link_libraries(hakoniwa_pdu_bridge_lib PUBLIC hakoniwa_pdu_endpoint nlohmann_json::nlohmann_json)
+target_link_libraries(hakoniwa_pdu_bridge_lib PUBLIC hakoniwa_pdu_endpoint)
 
 # Link our bridge executable against the created library
 target_link_libraries(hakoniwa-pdu-bridge 
@@ -117,3 +124,36 @@ option(HAKO_PDU_BRIDGE_BUILD_EXAMPLES "Build bridge examples" OFF)
 if(HAKO_PDU_BRIDGE_BUILD_EXAMPLES)
   add_subdirectory(examples)
 endif()
+
+# Install
+install(TARGETS hakoniwa_pdu_bridge_lib
+  EXPORT hakoniwa_pdu_bridgeTargets
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+)
+install(DIRECTORY include/ DESTINATION include)
+
+configure_package_config_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/cmake/hakoniwa_pdu_bridgeConfig.cmake.in
+  ${CMAKE_CURRENT_BINARY_DIR}/hakoniwa_pdu_bridgeConfig.cmake
+  INSTALL_DESTINATION lib/cmake/hakoniwa_pdu_bridge
+)
+
+write_basic_package_version_file(
+  ${CMAKE_CURRENT_BINARY_DIR}/hakoniwa_pdu_bridgeConfigVersion.cmake
+  VERSION 1.0.0
+  COMPATIBILITY AnyNewerVersion
+)
+
+install(EXPORT hakoniwa_pdu_bridgeTargets
+  FILE hakoniwa_pdu_bridgeTargets.cmake
+  NAMESPACE hakoniwa_pdu_bridge::
+  DESTINATION lib/cmake/hakoniwa_pdu_bridge
+)
+
+install(FILES
+  ${CMAKE_CURRENT_BINARY_DIR}/hakoniwa_pdu_bridgeConfig.cmake
+  ${CMAKE_CURRENT_BINARY_DIR}/hakoniwa_pdu_bridgeConfigVersion.cmake
+  DESTINATION lib/cmake/hakoniwa_pdu_bridge
+)
