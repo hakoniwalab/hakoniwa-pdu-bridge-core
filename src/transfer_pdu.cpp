@@ -115,22 +115,6 @@ void hakoniwa::pdu::bridge::TransferPdu::transfer() {
     }
 
 
-    // Epoch handling: Assuming epoch is part of the PDU data.
-    // This requires knowledge of the PDU structure, which is not available here.
-    // For now, let's assume the first sizeof(uint64_t) bytes contain the epoch.
-    uint64_t pdu_epoch = 0;
-    if (received_size >= sizeof(uint64_t)) {
-        pdu_epoch = *reinterpret_cast<const uint64_t*>(buffer.data());
-    }
-    
-    if (!accept_epoch(pdu_epoch)) {
-        #ifdef ENABLE_DEBUG_MESSAGES
-        std::cout << "DEBUG: Discarding PDU " << config_pdu_key_.id << " (epoch " << pdu_epoch 
-                  << ", owner " << owner_epoch_ << ")" << std::endl;
-        #endif
-        return;
-    }
-
     // Write to destination endpoint
     HakoPduErrorType write_err = dst_endpoint_->send(
         endpoint_pdu_key_, std::span<const std::byte>(buffer)
@@ -149,13 +133,6 @@ void hakoniwa::pdu::bridge::TransferPdu::transfer() {
               << std::endl;
     #endif
 }
-
-bool hakoniwa::pdu::bridge::TransferPdu::accept_epoch(uint64_t pdu_epoch) {
-    // Per impl-design.md, the receiver should discard PDUs from older epochs.
-    // The `owner_epoch_` represents the current valid epoch for this node.
-    return pdu_epoch >= owner_epoch_;
-}
-
 
 // Implementation of TransferAtomicPduGroup
 hakoniwa::pdu::bridge::TransferAtomicPduGroup::TransferAtomicPduGroup(

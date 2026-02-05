@@ -62,7 +62,6 @@ private:
     void try_transfer();
 
     void transfer();
-    bool accept_epoch(uint64_t pdu_epoch);
 };
 
 
