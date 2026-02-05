@@ -67,6 +67,7 @@ struct Connection {
     ConnectionSource source;
     std::vector<ConnectionDestination> destinations;
     std::vector<TransferPduConfig> transferPdus;
+    std::optional<bool> epoch_validation;
 };
 
 // Root Configuration Object
@@ -129,6 +130,9 @@ inline void from_json(const nlohmann::json& j, Connection& c) {
     j.at("source").get_to(c.source);
     j.at("destinations").get_to(c.destinations);
     j.at("transferPdus").get_to(c.transferPdus);
+    if (j.contains("epoch_validation")) {
+        c.epoch_validation = j.at("epoch_validation").get<bool>();
+    }
 }
 inline void from_json(const nlohmann::json& j, BridgeConfig& b) {
     j.at("version").get_to(b.version);
@@ -147,4 +151,3 @@ inline void from_json(const nlohmann::json& j, BridgeConfig& b) {
 
 
 } // namespace hakoniwa::pdu::bridge
-

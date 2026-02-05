@@ -63,4 +63,24 @@ bool BridgeCore::set_connection_active(const std::string& connection_id, bool is
     return false;
 }
 
+bool BridgeCore::get_connection_epoch(const std::string& connection_id, uint8_t& out_epoch) const {
+    for (const auto& connection : connections_) {
+        if (connection->getConnectionId() == connection_id) {
+            out_epoch = connection->get_epoch();
+            return true;
+        }
+    }
+    return false;
+}
+
+bool BridgeCore::increment_connection_epoch(const std::string& connection_id) {
+    for (auto& connection : connections_) {
+        if (connection->getConnectionId() == connection_id) {
+            connection->increment_epoch();
+            return true;
+        }
+    }
+    return false;
+}
+
 } // namespace hakoniwa::pdu::bridge

@@ -7,6 +7,7 @@
 #include <memory>
 #include <atomic>
 #include <string>
+#include <cstdint>
 
 namespace hakoniwa::pdu::bridge {
 
@@ -44,6 +45,8 @@ public:
     bool set_connection_active(const std::string& connection_id, bool is_active);
     bool pause_connection(const std::string& connection_id) { return set_connection_active(connection_id, false); }
     bool resume_connection(const std::string& connection_id) { return set_connection_active(connection_id, true); }
+    bool get_connection_epoch(const std::string& connection_id, uint8_t& out_epoch) const;
+    bool increment_connection_epoch(const std::string& connection_id);
 
 private:
     std::string node_name_;

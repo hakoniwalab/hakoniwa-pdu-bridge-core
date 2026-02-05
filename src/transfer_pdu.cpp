@@ -1,6 +1,7 @@
 #include "hakoniwa/pdu/bridge/transfer_pdu.hpp"
 #include "hakoniwa/time_source/time_source.hpp" // For ITimeSource
 #include "hakoniwa/pdu/bridge/policy/immediate_policy.hpp"
+#include "hakoniwa/pdu/pdu_primitive_ctypes.h"
 #include <iostream>
 #include <vector> // For std::vector<std::byte>
 
@@ -62,8 +63,8 @@ void hakoniwa::pdu::bridge::TransferPdu::set_active(bool is_active) {
     is_active_ = is_active;
 }
 
-void hakoniwa::pdu::bridge::TransferPdu::set_epoch(uint64_t epoch) {
-    owner_epoch_ = epoch;
+void hakoniwa::pdu::bridge::TransferPdu::set_epoch(uint8_t epoch) {
+    owner_epoch_.store(epoch, std::memory_order_relaxed);
 }
 
 void hakoniwa::pdu::bridge::TransferPdu::try_transfer() {
@@ -114,6 +115,23 @@ void hakoniwa::pdu::bridge::TransferPdu::transfer() {
                   << " bytes, expected " << pdu_size << std::endl;
     }
 
+
+    if (epoch_validation_) {
+        uint8_t pdu_epoch = 0;
+        if (hako_pdu_get_epoch(buffer.data(), &pdu_epoch) != 0) {
+            std::cerr << "ERROR: Failed to get epoch from PDU "
+                      << endpoint_pdu_key_.robot << "." << endpoint_pdu_key_.pdu << std::endl;
+            return;
+        }
+        if (pdu_epoch != owner_epoch_.load(std::memory_order_relaxed)) {
+            #ifdef ENABLE_DEBUG_MESSAGES
+            std::cout << "DEBUG: Discarding PDU " << config_pdu_key_.id
+                      << " (epoch " << static_cast<int>(pdu_epoch)
+                      << ", owner " << static_cast<int>(owner_epoch_.load(std::memory_order_relaxed)) << ")" << std::endl;
+            #endif
+            return;
+        }
+    }
 
     // Write to destination endpoint
     HakoPduErrorType write_err = dst_endpoint_->send(
@@ -184,9 +202,9 @@ void hakoniwa::pdu::bridge::TransferAtomicPduGroup::set_active(bool is_active)
     is_active_ = is_active;
 }
 
-void hakoniwa::pdu::bridge::TransferAtomicPduGroup::set_epoch(uint64_t epoch)
+void hakoniwa::pdu::bridge::TransferAtomicPduGroup::set_epoch(uint8_t epoch)
 {
-    owner_epoch_ = epoch;
+    owner_epoch_.store(epoch, std::memory_order_relaxed);
 }
 
 void hakoniwa::pdu::bridge::TransferAtomicPduGroup::cyclic_trigger()
@@ -223,6 +241,14 @@ void hakoniwa::pdu::bridge::TransferAtomicPduGroup::try_transfer(
 void hakoniwa::pdu::bridge::TransferAtomicPduGroup::try_transfer_group()
 {
     //std::cout << "DEBUG: START transfer" << std::endl;
+    struct PduBuffer {
+        hakoniwa::pdu::PduResolvedKey key;
+        std::string pdu_name;
+        std::vector<std::byte> data;
+    };
+    std::vector<PduBuffer> buffers;
+    buffers.reserve(transfer_atomic_pdu_group_.size());
+
     for (auto& pdu_resolved_key : transfer_atomic_pdu_group_) {
 #ifdef ENABLE_DEBUG_MESSAGES
         std::cout << "INFO: Bridge atomic group transfer triggered: "
@@ -232,7 +258,7 @@ void hakoniwa::pdu::bridge::TransferAtomicPduGroup::try_transfer_group()
                   << " channel=" << pdu_resolved_key->channel_id
                   << std::endl;
 #endif
-        //read pdu
+        // Read PDU
         std::string pdu_name = src_endpoint_->get_pdu_name(*pdu_resolved_key);
         size_t pdu_size = src_endpoint_->get_pdu_size(
             {pdu_resolved_key->robot, pdu_name}
@@ -259,13 +285,33 @@ void hakoniwa::pdu::bridge::TransferAtomicPduGroup::try_transfer_group()
                       << " bytes, expected " << pdu_size << std::endl;
             continue;
         }
+
+        if (epoch_validation_) {
+            uint8_t pdu_epoch = 0;
+            if (hako_pdu_get_epoch(buffer.data(), &pdu_epoch) != 0) {
+                std::cerr << "ERROR: Failed to get epoch from PDU "
+                          << pdu_resolved_key->robot << "." << pdu_name << std::endl;
+                return;
+            }
+            if (pdu_epoch != owner_epoch_.load(std::memory_order_relaxed)) {
+                #ifdef ENABLE_DEBUG_MESSAGES
+                std::cout << "DEBUG: Discarding atomic group (epoch " << static_cast<int>(pdu_epoch)
+                          << ", owner " << static_cast<int>(owner_epoch_.load(std::memory_order_relaxed)) << ")" << std::endl;
+                #endif
+                return;
+            }
+        }
+        buffers.push_back(PduBuffer{*pdu_resolved_key, pdu_name, std::move(buffer)});
+    }
+
+    for (const auto& entry : buffers) {
         // write to destination endpoint
         HakoPduErrorType write_err = dst_endpoint_->send(
-            *pdu_resolved_key, std::span<const std::byte>(buffer)
+            entry.key, std::span<const std::byte>(entry.data)
         );
         if (write_err != HAKO_PDU_ERR_OK) {
-            std::cerr << "ERROR: Failed to write PDU " << pdu_resolved_key->robot 
-                      << "." << pdu_name << " to destination: " << write_err << std::endl;
+            std::cerr << "ERROR: Failed to write PDU " << entry.key.robot
+                      << "." << entry.pdu_name << " to destination: " << write_err << std::endl;
             continue;
         }
         dst_endpoint_->process_recv_events(); // Ensure the destination processes the received PDU

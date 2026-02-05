@@ -114,7 +114,8 @@ namespace hakoniwa::pdu::bridge {
             if (conn_def.nodeId != node_name) {
                 continue; // Skip connections not intended for this node
             }
-            auto connection = std::make_unique<BridgeConnection>(conn_def.nodeId, conn_def.id);
+            bool epoch_validation = conn_def.epoch_validation.value_or(false);
+            auto connection = std::make_unique<BridgeConnection>(conn_def.nodeId, conn_def.id, epoch_validation);
             
             std::shared_ptr<hakoniwa::pdu::Endpoint> src_ep = endpoint_container->ref(conn_def.source.endpointId);
             if (!src_ep) {

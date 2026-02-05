@@ -2,6 +2,9 @@
 #include "hakoniwa/pdu/bridge/bridge_core.hpp"
 #include "hakoniwa/pdu/endpoint.hpp"
 #include "hakoniwa/time_source/time_source_factory.hpp"
+#include "hakoniwa/pdu/pdu_convertor.hpp"
+#include "hakoniwa/pdu/geometry_msgs/pdu_cpptype_conv_Twist.hpp"
+#include "hakoniwa/pdu/pdu_primitive_ctypes.h"
 #include <gtest/gtest.h>
 #include <cstdlib>
 #include <filesystem>
@@ -154,6 +157,62 @@ TEST(BridgeCoreFlowTest, AtomicPolicyFlow) {
     ASSERT_EQ(received_size, time_data.size());
     recv_buffer.resize(received_size);
     ASSERT_EQ(recv_buffer, time_data);
+}
+
+TEST(BridgeCoreFlowTest, ImmediatePolicyEpochValidation) {
+    // 1. Setup
+    std::shared_ptr<hakoniwa::pdu::EndpointContainer> endpoint_container = 
+        std::make_shared<hakoniwa::pdu::EndpointContainer>("node1", config_path("endpoints.json"));
+    HakoPduErrorType init_ret = endpoint_container->initialize();
+    ASSERT_EQ(init_ret, HAKO_PDU_ERR_OK);
+
+    std::shared_ptr<hakoniwa::time_source::ITimeSource> time_source = 
+        hakoniwa::time_source::create_time_source("real", 1000);
+
+    auto result = hakoniwa::pdu::bridge::build(config_path("bridge-core-flow-epoch-test.json"), "node1", time_source, endpoint_container);
+    ASSERT_TRUE(result.ok()) << result.error_message;
+    auto bridge_core = std::move(result.core);
+
+    ASSERT_TRUE(bridge_core != nullptr);
+    ASSERT_EQ(endpoint_container->list_endpoint_ids().size(), 2U);
+
+    ASSERT_EQ(endpoint_container->start_all(), HAKO_PDU_ERR_OK);
+    bridge_core->start();
+
+    auto src_ep = endpoint_container->ref("n1-epSrc");
+    auto dst_ep = endpoint_container->ref("n1-epDst");
+
+    hakoniwa::pdu::PduKey key = {"Drone", "pos"};
+    size_t pdu_size = src_ep->get_pdu_size(key);
+    ASSERT_GT(pdu_size, 0U);
+
+    hako::pdu::PduConvertor<HakoCpp_Twist, hako::pdu::msgs::geometry_msgs::Twist> convertor;
+    HakoCpp_Twist twist{};
+    twist.linear = {1.0, 2.0, 3.0};
+    twist.angular = {4.0, 5.0, 6.0};
+
+    std::vector<std::byte> buffer(pdu_size);
+    int serialized_size = convertor.cpp2pdu(
+        twist, reinterpret_cast<char*>(buffer.data()), static_cast<int>(buffer.size()));
+    ASSERT_GT(serialized_size, 0);
+
+    // 2. Mismatch epoch -> discarded
+    ASSERT_EQ(hako_pdu_set_epoch(buffer.data(), 1), 0);
+    ASSERT_EQ(src_ep->send(key, buffer), HAKO_PDU_ERR_OK);
+    ASSERT_TRUE(bridge_core->cyclic_trigger());
+
+    std::vector<std::byte> recv_pdu(pdu_size);
+    size_t received_size = 0;
+    EXPECT_EQ(dst_ep->recv(key, recv_pdu, received_size), HAKO_PDU_ERR_NO_ENTRY);
+
+    // 3. Increment connection epoch to match and retry
+    ASSERT_TRUE(bridge_core->increment_connection_epoch("conn1"));
+    ASSERT_EQ(src_ep->send(key, buffer), HAKO_PDU_ERR_OK);
+    ASSERT_TRUE(bridge_core->cyclic_trigger());
+
+    EXPECT_EQ(dst_ep->recv(key, recv_pdu, received_size), HAKO_PDU_ERR_OK);
+    EXPECT_EQ(received_size, pdu_size);
+    EXPECT_EQ(buffer, recv_pdu);
 }
 
 }

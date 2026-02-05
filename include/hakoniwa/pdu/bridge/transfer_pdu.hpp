@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <chrono>
 #include <vector> // For temporary buffer in transfer()
+#include <atomic>
 
 namespace hakoniwa::pdu::bridge {
 
@@ -20,7 +21,8 @@ public:
 
     virtual void cyclic_trigger() = 0;
     virtual void set_active(bool is_active) = 0;
-    virtual void set_epoch(uint64_t epoch) = 0;
+    virtual void set_epoch(uint8_t epoch) = 0;
+    virtual void set_epoch_validation(bool enable) = 0;
 };
 
 class TransferPdu : public ITransferPdu {
@@ -34,7 +36,8 @@ public:
     );
 
     void set_active(bool is_active) override;
-    void set_epoch(uint64_t epoch) override;
+    void set_epoch(uint8_t epoch) override;
+    void set_epoch_validation(bool enable) override { epoch_validation_ = enable; }
     
     // Attempts to transfer data based on the policy.
     void cyclic_trigger() override
@@ -53,7 +56,8 @@ private:
     std::shared_ptr<hakoniwa::pdu::Endpoint>            dst_endpoint_;
     std::shared_ptr<hakoniwa::time_source::ITimeSource>  time_source_;
     bool is_active_ = false;
-    uint64_t owner_epoch_ = 0;
+    std::atomic<uint8_t> owner_epoch_{0};
+    bool epoch_validation_ = false;
     void on_recv_callback(const hakoniwa::pdu::PduResolvedKey& pdu_key, std::span<const std::byte> data)
     {
         //std::cout << "TransferPdu: on_recv_callback triggered for Robot: " << pdu_key.robot << " Channel ID: " << pdu_key.channel_id << std::endl;
@@ -75,7 +79,8 @@ public:
         std::shared_ptr<hakoniwa::pdu::Endpoint> dst
     );
     void set_active(bool is_active) override;
-    void set_epoch(uint64_t epoch) override;
+    void set_epoch(uint8_t epoch) override;
+    void set_epoch_validation(bool enable) override { epoch_validation_ = enable; }
     // Event-driven only; cyclic_trigger is intentionally ignored.
     void cyclic_trigger() override;
 private:
@@ -85,7 +90,8 @@ private:
     std::shared_ptr<hakoniwa::pdu::Endpoint>            src_endpoint_;
     std::shared_ptr<hakoniwa::pdu::Endpoint>            dst_endpoint_;
     bool is_active_ = false;
-    uint64_t owner_epoch_ = 0;
+    std::atomic<uint8_t> owner_epoch_{0};
+    bool epoch_validation_ = false;
     void on_recv_callback(const hakoniwa::pdu::PduResolvedKey& pdu_key, std::span<const std::byte> data)
     {
         //std::cout << "TransferAtomicPduGroup: on_recv_callback triggered for Robot: " << pdu_key.robot << " Channel ID: " << pdu_key.channel_id << std::endl;
