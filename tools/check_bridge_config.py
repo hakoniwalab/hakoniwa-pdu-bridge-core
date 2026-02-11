@@ -100,8 +100,18 @@ def main() -> int:
     if not check_bridge_paths(args.bridge_json, bridge_data):
         ok = False
 
-    if args.endpoint_container:
-        if not check_endpoint_container_paths(args.endpoint_container):
+    endpoint_container_path = args.endpoint_container
+    if endpoint_container_path is None:
+        endpoints_config_path = bridge_data.get("endpoints_config_path")
+        if isinstance(endpoints_config_path, str) and endpoints_config_path:
+            endpoint_container_path = (args.bridge_json.parent / endpoints_config_path).resolve()
+            if not endpoint_container_path.is_file():
+                print(f"ERROR: endpoints_config_path not found: {endpoints_config_path} (resolved: {endpoint_container_path})")
+                ok = False
+                endpoint_container_path = None
+
+    if endpoint_container_path:
+        if not check_endpoint_container_paths(endpoint_container_path):
             ok = False
 
     if ok:

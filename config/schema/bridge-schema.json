@@ -9,8 +9,6 @@
     "time_source_type",
     "transferPolicies",
     "nodes",
-    "endpoints",
-    "wireLinks",
     "pduKeyGroups",
     "connections"
   ],
@@ -41,6 +39,12 @@
       "minItems": 1,
       "items": { "$ref": "#/$defs/node" },
       "uniqueItems": true
+    },
+
+    "endpoints_config_path": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Optional path to endpoint_container.json used by hakoniwa-pdu-endpoint. Resolved relative to bridge.json."
     },
 
     "endpoints": {

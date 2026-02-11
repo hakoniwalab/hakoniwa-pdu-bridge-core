@@ -176,6 +176,45 @@ If shared libraries are not found at runtime, add `LD_LIBRARY_PATH` (Linux) or `
 
 ---
 
+## Quickstart (1-minute, local)
+
+This is the fastest way to see data flowing on a single machine.
+
+Terminal 1 (bridge daemon):
+```bash
+./build/hakoniwa-pdu-bridge \
+  config/tutorials/bridge-immediate.json \
+  1000 \
+  config/tutorials/endpoint_container.json \
+  node1
+```
+
+Terminal 2 (reader):
+```bash
+build/examples/bridge_reader \
+  config/tutorials/endpoint/reader.json \
+  Drone \
+  pos \
+  10
+```
+
+Terminal 3 (writer):
+```bash
+build/examples/bridge_writer \
+  config/tutorials/endpoint/writer.json \
+  Drone \
+  pos \
+  10
+```
+
+Expected output:
+- writer prints `sent seq=...`
+- reader prints `recv bytes=... text="ts=... seq=..."`
+
+If you see `PDU size is 0`, check that:
+- the `robot`/`pdu` names match your endpoint configs
+- your endpoint config file path is correct
+
 ## Tests
 
 Use GTest. After building, run `ctest`.
@@ -238,7 +277,8 @@ Constraints:
 
 Notes:
 - `time_source_type` can be in `bridge.json`, but the current implementation uses CLI `delta_time_step_usec` and a fixed `real` time source.
-- `endpoints` / `wireLinks` are not used by the current implementation.
+- `endpoints` / `wireLinks` are accepted by the schema but are not used by the current implementation.
+- `endpoints_config_path` is optional and points to an endpoint container JSON file (used by `tools/check_bridge_config.py`).
 
 ### Schema validation
 
