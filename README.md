@@ -138,6 +138,7 @@ If shared libraries are not found at runtime, add `LD_LIBRARY_PATH` (Linux) or `
 ## Run
 
 Note: `hakoniwa-pdu-bridge` is a reference daemon that wires the bridge library with a `real` time source.
+Library integrators can provide their own `ITimeSource` and execution loop.
 
 ```bash
 ./build/hakoniwa-pdu-bridge <bridge.json> <delta_time_step_usec> <endpoint_container.json> [node_name]
@@ -147,6 +148,7 @@ Note: `hakoniwa-pdu-bridge` is a reference daemon that wires the bridge library 
 - `delta_time_step_usec`: tick interval used by the reference daemon's real-time loop (microseconds)
 - `endpoint_container.json`: config for endpoint loader (`hakoniwa-pdu-endpoint`)
 - `node_name`: optional, default `node1`
+`delta_time_step_usec` only affects the reference daemon sleep interval; policy decisions still read time via the injected `ITimeSource` in the library.
 
 ### Example (single node, local)
 
@@ -186,6 +188,12 @@ Notes:
 
 This is the fastest way to see data flowing on a single machine.
 
+Before running, validate that `bridge.json` and `endpoint_container.json` are consistent:
+This catches `endpointId` drift across `bridge.json` and `endpoint_container.json`.
+```bash
+python3 tools/check_bridge_config.py config/tutorials/bridge-immediate.json --endpoint-container config/tutorials/endpoint_container.json
+```
+
 Terminal 1 (bridge daemon):
 ```bash
 ./build/hakoniwa-pdu-bridge \
@@ -217,9 +225,11 @@ Expected output:
 - writer prints `sent seq=...`
 - reader prints `recv bytes=... text="ts=... seq=..."`
 
-If you see `PDU size is 0`, check that:
-- the `robot`/`pdu` names match your endpoint configs
-- your endpoint config file path is correct
+If it fails, check these first:
+- `Bridge build failed: ... endpoint not found`: ensure `endpointId` in `bridge.json` exists in `endpoint_container.json` for the selected `node_name`
+- `Failed to open endpoint`: verify `endpoint.json` and its `config_path` resolution
+- `PDU size is 0`: check `robot`/`pdu` names against the endpoint `pdu_def_path`
+- `No data arrives on reader`: confirm endpoint directions (`in`/`out`) and port conflicts in `config/tutorials/comm/`
 
 ## Troubleshooting
 
@@ -449,6 +459,7 @@ Transfer timing and flow are expressed in `bridge.json`:
 - delivery/timing assumptions remain explicit and reviewable
 
 The bridge treats transfer behavior as configuration, not embedded logic.
+`bridge.json` expresses logical timing/flow, while `endpoint_container.json` expresses concrete transport wiring, keeping assumptions explicit and reviewable.
 
 ---
 
