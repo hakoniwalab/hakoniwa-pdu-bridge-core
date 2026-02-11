@@ -11,7 +11,6 @@ Use `config/tutorials/bridge-immediate.json`:
 ```json
 {
   "version": "2.0.0",
-  "time_source_type": "real",
   "transferPolicies": {
     "immediate_policy": { "type": "immediate" }
   },

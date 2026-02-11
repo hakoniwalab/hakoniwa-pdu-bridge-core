@@ -1,6 +1,5 @@
 {
     "version": "2.0.0",
-    "time_source_type": "virtual",
     "transferPolicies": {
       "atomic_policy": {
         "type": "immediate",

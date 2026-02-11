@@ -10,7 +10,7 @@ The core design is to **separate the decision of when to transfer** from **how t
 
 **This is:**
 - A transfer layer that declares logical PDU flows
-- A definition of which PDUs flow where, under which time model
+- A definition of which PDUs flow where, under which transfer policy model
 
 **This is NOT:**
 - A transport implementation (TCP/UDP/WebSocket/Zenoh/SHM, etc.)
@@ -27,8 +27,8 @@ The core design is to **separate the decision of when to transfer** from **how t
 - **BridgeCore**: holds `BridgeConnection`s and drives `cyclic_trigger()`.
 - **BridgeConnection**: binds a source to destinations and holds `TransferPdu`.
 - **TransferPdu / TransferAtomicPduGroup**: transfers a single PDU or an atomic PDU group.
-- **Policy**: `immediate` / `throttle` / `ticker` time models.
-- **TimeSource**: `real` / `virtual` / `hakoniwa` (see note below).
+- **Policy**: `immediate` / `throttle` / `ticker` transfer policies.
+- **TimeSource (injected)**: `ITimeSource` provided by the caller.
 - **EndpointContainer**: endpoint creation and management (`hakoniwa-pdu-endpoint`).
 
 ### Data flow (high level)
@@ -137,12 +137,14 @@ If shared libraries are not found at runtime, add `LD_LIBRARY_PATH` (Linux) or `
 
 ## Run
 
+Note: `hakoniwa-pdu-bridge` is a reference daemon that wires the bridge library with a `real` time source.
+
 ```bash
 ./build/hakoniwa-pdu-bridge <bridge.json> <delta_time_step_usec> <endpoint_container.json> [node_name]
 ```
 
 - `bridge.json`: config for this repository
-- `delta_time_step_usec`: time step for the time source (microseconds)
+- `delta_time_step_usec`: tick interval used by the reference daemon's real-time loop (microseconds)
 - `endpoint_container.json`: config for endpoint loader (`hakoniwa-pdu-endpoint`)
 - `node_name`: optional, default `node1`
 
@@ -227,6 +229,12 @@ If you see `PDU size is 0`, check that:
 - No data arrives on reader: check endpoint directions (`in`/`out`) and that ports in `config/tutorials/comm/` are not used by other processes.
 - Schema validation fails: install `jsonschema` for the Python checker or use `ajv` for the JSON schema.
 
+## FAQ
+
+- Q: Why is there no `time_source_type` in `bridge.json`? A: The time source is provided by the caller. The library uses the injected `ITimeSource` for policy decisions, and the sample daemon creates a `real` time source and sleeps each loop.
+- Q: Why are there two config files? A: `bridge.json` declares logical transfers; `endpoint_container.json` declares concrete endpoints and transport details.
+- Q: What does `atomic: true` guarantee? A: The group transfers only after all PDUs in the group have updated; it does not guarantee identical generation timestamps.
+
 ## Tests
 
 Use GTest. After building, run `ctest`.
@@ -277,7 +285,6 @@ Policy-specific tutorials live under `docs/tutorials/`:
 
 Required top-level fields:
 - `version` (currently `2.0.0`)
-- `time_source_type`
 - `transferPolicies`
 - `nodes`
 - `pduKeyGroups`
@@ -289,7 +296,6 @@ Constraints:
 - `immediate` must not specify `intervalMs`
 
 Notes:
-- `time_source_type` can be in `bridge.json`, but the current implementation uses CLI `delta_time_step_usec` and a fixed `real` time source.
 - `endpoints` / `wireLinks` are accepted by the schema but are not used by the current implementation.
 - `endpoints_config_path` is optional and points to an endpoint container JSON file (used by `tools/check_bridge_config.py`).
 
@@ -343,15 +349,22 @@ Example config: `config/tutorials/bridge-immediate-atomic.json`.
 
 ---
 
-## Time source
+## Time source (why)
 
-`time_source_type` defines the time base used by `throttle`/`ticker`.
+Transfer policies such as `throttle` and `ticker` require a clock.
+However, the bridge must not decide **which** clock to use.
 
-- `real`: system wall-clock time
-- `virtual`: externally provided virtual time
-- `hakoniwa`: synchronized with Hakoniwa core time
+The bridge is a policy engine, not a scheduler.
+Simulations may run on real time, virtual time, or externally synchronized time.
+Selecting the clock is an integration concern, not a transfer concern.
 
-**Current implementation:** uses `real` with CLI `delta_time_step_usec` and ignores `time_source_type`.
+Therefore, the time source is **injected by the caller**.
+
+What this means:
+- the library reads time via `ITimeSource` only for policy decisions
+- the library itself never sleeps and does not drive the execution loop
+- `immediate` is event-driven and ignores the time source
+- the sample daemon provides a `real` time source and sleeps each loop, but that is only one caller choice
 
 ---
 
@@ -366,7 +379,6 @@ At owner switching boundaries, old and new owners may send concurrently, so rece
 ```json
 {
   "version": "2.0.0",
-  "time_source_type": "virtual",
   "transferPolicies": {
     "immediate_policy": { "type": "immediate" }
   },
@@ -384,8 +396,8 @@ At owner switching boundaries, old and new owners may send concurrently, so rece
     {
       "id": "node1_to_node2_conn",
       "nodeId": "node1",
-      "source": { "endpointId": "n1-src" },
-      "destinations": [{ "endpointId": "n1-dst" }],
+      "source": { "endpointId": "n1-to-n2-src" },
+      "destinations": [{ "endpointId": "n1-to-n2-dst" }],
       "transferPdus": [
         { "pduKeyGroupId": "drone_data", "policyId": "immediate_policy" }
       ]
@@ -393,8 +405,8 @@ At owner switching boundaries, old and new owners may send concurrently, so rece
     {
       "id": "node2_from_node1_conn",
       "nodeId": "node2",
-      "source": { "endpointId": "n2-src" },
-      "destinations": [{ "endpointId": "n2-dst" }],
+      "source": { "endpointId": "n2-from-n1-src" },
+      "destinations": [{ "endpointId": "n2-from-n1-dst" }],
       "transferPdus": [
         { "pduKeyGroupId": "drone_data", "policyId": "immediate_policy" }
       ]
@@ -402,3 +414,46 @@ At owner switching boundaries, old and new owners may send concurrently, so rece
   ]
 }
 ```
+
+---
+
+## Design philosophy
+
+This repository implements bridge-side logic only:
+- transfer timing is handled here
+- transport and endpoint I/O are handled by `hakoniwa-pdu-endpoint`
+
+Responsibility boundaries:
+- this bridge decides **when** to transfer
+- endpoints decide **how** to communicate (TCP/UDP/SHM/etc.)
+- the caller provides the time source and drives the execution loop
+
+The time source is injected to allow integration-specific control over time.
+The bridge reads time via `ITimeSource` only for policy decisions, and never sleeps.
+
+## Target users
+
+This component is intended for:
+- developers building distributed simulations
+- integrators managing multi-node PDU flows
+- system architects who need explicit control over transfer timing
+
+It is not intended as a general-purpose messaging library.
+
+## Why declarative configuration
+
+Transfer timing and flow are expressed in `bridge.json`:
+- data flow logic is visible in configuration
+- timing policies are not hidden in application code
+- integration changes do not require recompilation
+- delivery/timing assumptions remain explicit and reviewable
+
+The bridge treats transfer behavior as configuration, not embedded logic.
+
+---
+
+## Further reading
+
+- Transfer policy tutorials: `docs/tutorials/`
+- Bridge schema: `config/schema/bridge-schema.json`
+- Endpoint configuration: see `hakoniwa-pdu-endpoint`

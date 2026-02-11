@@ -6,7 +6,6 @@
   "additionalProperties": false,
   "required": [
     "version",
-    "time_source_type",
     "transferPolicies",
     "nodes",
     "pduKeyGroups",
@@ -17,11 +16,6 @@
     "version": {
       "type": "string",
       "const": "2.0.0"
-    },
-    "time_source_type": {
-      "type": "string",
-      "enum": ["real", "virtual", "hakoniwa"],
-      "description": "Specifies the type of time source to use: 'real' for system time, 'virtual' for simulated time."
     },
 
     "transferPolicies": {

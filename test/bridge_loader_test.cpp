@@ -29,7 +29,6 @@ TEST(BridgeLoaderTest, LoadsImmediateConfig) {
     BridgeConfig config = *config_;
 
     EXPECT_EQ(config.version, "2.0.0");
-    EXPECT_EQ(config.time_source_type, "virtual");
     ASSERT_EQ(config.transferPolicies.size(), 1U);
     EXPECT_EQ(config.transferPolicies.at("immediate_policy").type, "immediate");
     EXPECT_FALSE(config.transferPolicies.at("immediate_policy").intervalMs.has_value());
@@ -70,7 +69,6 @@ TEST(BridgeLoaderTest, LoadsTickerConfig2) {
     BridgeConfig config = *config_;
 
     EXPECT_EQ(config.version, "2.0.0");
-    EXPECT_EQ(config.time_source_type, "virtual");
     
     EXPECT_EQ(config.nodes.size(), 1U);
     EXPECT_EQ(config.nodes[0].id, "node1");
@@ -100,7 +98,6 @@ TEST(BridgeLoaderTest, LoadsThrottleConfig2) {
     BridgeConfig config = *config_;
 
     EXPECT_EQ(config.version, "2.0.0");
-    EXPECT_EQ(config.time_source_type, "real");
     
     EXPECT_EQ(config.transferPolicies.size(), 1U);
     EXPECT_TRUE(config.transferPolicies.count("throttle1"));
@@ -136,7 +133,6 @@ TEST(BridgeLoaderTest, LoadsMultipleConfig) {
     BridgeConfig config = *config_;
 
     EXPECT_EQ(config.version, "2.0.0");
-    EXPECT_EQ(config.time_source_type, "real");
     
     EXPECT_EQ(config.transferPolicies.size(), 2U);
     EXPECT_TRUE(config.transferPolicies.count("immediate"));

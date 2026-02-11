@@ -73,7 +73,6 @@ struct Connection {
 // Root Configuration Object
 struct BridgeConfig {
     std::string version;
-    std::string time_source_type; // New field
     std::map<std::string, TransferPolicy> transferPolicies;
     std::vector<Node> nodes;
     std::optional<std::string> endpoints_config_path;
@@ -136,7 +135,6 @@ inline void from_json(const nlohmann::json& j, Connection& c) {
 }
 inline void from_json(const nlohmann::json& j, BridgeConfig& b) {
     j.at("version").get_to(b.version);
-    j.at("time_source_type").get_to(b.time_source_type); // Parse new field
     j.at("transferPolicies").get_to(b.transferPolicies);
     j.at("nodes").get_to(b.nodes);
     if (j.contains("endpoints_config_path")) {

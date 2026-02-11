@@ -13,7 +13,6 @@ The bridge daemon runs as:
 ```
 
 Notes:
-- `time_source_type` in `bridge.json` is ignored by the current implementation. `delta_time_step_usec` is used with a fixed `real` time source.
 - `endpoints` and `wireLinks` are accepted by the schema but ignored by the current implementation.
 - `config_path` values are resolved relative to the `bridge.json` location.
 - The bridge daemon uses an endpoint container; the writer/reader examples open endpoint configs directly.

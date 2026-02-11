@@ -11,7 +11,6 @@ Use `config/tutorials/bridge-throttle.json`:
 ```json
 {
   "version": "2.0.0",
-  "time_source_type": "real",
   "transferPolicies": {
     "throttle_policy": { "type": "throttle", "intervalMs": 100 }
   },

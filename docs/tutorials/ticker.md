@@ -11,7 +11,6 @@ Use `config/tutorials/bridge-ticker.json`:
 ```json
 {
   "version": "2.0.0",
-  "time_source_type": "real",
   "transferPolicies": {
     "ticker_policy": { "type": "ticker", "intervalMs": 100 }
   },
