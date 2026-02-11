@@ -187,6 +187,7 @@ Notes:
 ## Quickstart (1-minute, local)
 
 This is the fastest way to see data flowing on a single machine.
+This workflow is explicit by design so timing and delivery assumptions stay visible.
 
 Before running, validate that `bridge.json` and `endpoint_container.json` are consistent:
 This catches `endpointId` drift across `bridge.json` and `endpoint_container.json`.
@@ -238,11 +239,13 @@ If it fails, check these first:
 - `Bridge build failed: ... endpoint not found`: the `endpointId` in `bridge.json` does not exist in `endpoint_container.json` for the selected `node_name`.
 - No data arrives on reader: check endpoint directions (`in`/`out`) and that ports in `config/tutorials/comm/` are not used by other processes.
 - Schema validation fails: install `jsonschema` for the Python checker or use `ajv` for the JSON schema.
+If you hit config drift, run the `check_bridge_config.py` command shown in Quickstart.
 
 ## FAQ
 
 - Q: Why is there no `time_source_type` in `bridge.json`? A: The time source is provided by the caller. The library uses the injected `ITimeSource` for policy decisions, and the sample daemon creates a `real` time source and sleeps each loop.
 - Q: Why are there two config files? A: `bridge.json` declares logical transfers; `endpoint_container.json` declares concrete endpoints and transport details.
+- Q: Why not combine them? A: Keeping timing/flow separate from transport wiring avoids hidden delivery assumptions.
 - Q: What does `atomic: true` guarantee? A: The group transfers only after all PDUs in the group have updated; it does not guarantee identical generation timestamps.
 
 ## Tests
