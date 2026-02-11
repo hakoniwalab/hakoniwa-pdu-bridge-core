@@ -4,7 +4,7 @@ These tutorials explain how to use each transfer policy with the existing bridge
 
 ## Common setup
 
-All examples assume the local endpoint configs under `config/sample/endpoint/` and the endpoint container file `test/config/core_flow/endpoints.json`.
+All examples assume the tutorial configs under `config/tutorials/` and the endpoint container file `config/tutorials/endpoint_container.json`.
 
 The bridge daemon runs as:
 
@@ -14,13 +14,14 @@ The bridge daemon runs as:
 
 Notes:
 - `time_source_type` in `bridge.json` is ignored by the current implementation. `delta_time_step_usec` is used with a fixed `real` time source.
-- `endpoints` and `wireLinks` are ignored by the current implementation, but are kept in examples to satisfy the schema.
+- `endpoints` and `wireLinks` are accepted by the schema but ignored by the current implementation.
 - `config_path` values are resolved relative to the `bridge.json` location.
 - The bridge daemon uses an endpoint container; the writer/reader examples open endpoint configs directly.
 - The tutorial configs use TCP loopback (`127.0.0.1`) on ports `9000` and `9100`.
 
 Ready-to-run configs:
 - `config/tutorials/bridge-immediate.json`
+- `config/tutorials/bridge-immediate-atomic.json`
 - `config/tutorials/bridge-throttle.json`
 - `config/tutorials/bridge-ticker.json`
 - `config/tutorials/endpoint_container.json`
@@ -31,7 +32,9 @@ You typically need:
 - a **writer** that sends PDUs into the source endpoint
 - a **reader** that receives PDUs from the destination endpoint
 
-Below are minimal C++ examples using `EndpointContainer`.
+The source code is in:
+- `examples/bridge_writer.cpp`
+- `examples/bridge_reader.cpp`
 
 ### Build examples
 
@@ -44,140 +47,16 @@ This builds:
 - `build/examples/bridge_writer`
 - `build/examples/bridge_reader`
 
-### Writer example (source)
+### Usage
 
-```cpp
-#include "hakoniwa/pdu/endpoint.hpp"
-#include "hakoniwa/pdu/endpoint_types.hpp"
-
-#include <algorithm>
-#include <cstddef>
-#include <cstdio>
-#include <cstdint>
-#include <cstring>
-#include <chrono>
-#include <ctime>
-#include <iostream>
-#include <span>
-#include <string>
-#include <thread>
-#include <vector>
-
-int main()
-{
-    const std::string endpoint_config_path = "config/tutorials/endpoint/writer.json";
-    const hakoniwa::pdu::PduKey pdu_key{"Drone", "pos"};
-
-    hakoniwa::pdu::Endpoint endpoint("bridge_writer", HAKO_PDU_ENDPOINT_DIRECTION_OUT);
-    if (endpoint.open(endpoint_config_path) != HAKO_PDU_ERR_OK) {
-        std::cerr << "Failed to open endpoint" << std::endl;
-        return 1;
-    }
-    if (endpoint.start() != HAKO_PDU_ERR_OK) {
-        std::cerr << "Failed to start endpoint" << std::endl;
-        return 1;
-    }
-    const std::size_t pdu_size = endpoint.get_pdu_size(pdu_key);
-    if (pdu_size == 0) {
-        std::cerr << "PDU size is 0" << std::endl;
-        return 1;
-    }
-
-    std::vector<std::byte> buffer(pdu_size);
-    std::uint32_t seq = 0;
-    for (;;) {
-        std::memset(buffer.data(), 0, buffer.size());
-        const auto now = std::chrono::system_clock::now();
-        const auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(
-            now.time_since_epoch()).count() % 1000;
-        const std::time_t now_time = std::chrono::system_clock::to_time_t(now);
-        std::tm tm_buf{};
-#if defined(_WIN32)
-        localtime_s(&tm_buf, &now_time);
-#else
-        localtime_r(&now_time, &tm_buf);
-#endif
-        char time_text[64];
-        std::strftime(time_text, sizeof(time_text), "%Y-%m-%dT%H:%M:%S", &tm_buf);
-        std::snprintf(
-            reinterpret_cast<char*>(buffer.data()),
-            buffer.size(),
-            "ts=%s.%03lld seq=%u",
-            time_text,
-            static_cast<long long>(millis),
-            seq);
-        (void)endpoint.send(pdu_key, std::span<const std::byte>(buffer));
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        ++seq;
-    }
-}
+Writer:
+```bash
+build/examples/bridge_writer <endpoint.json> <robot> <pdu> [interval_ms]
 ```
 
-### Reader example (destination)
-
-```cpp
-#include "hakoniwa/pdu/endpoint.hpp"
-#include "hakoniwa/pdu/endpoint_types.hpp"
-
-#include <algorithm>
-#include <cstddef>
-#include <cstdint>
-#include <cstring>
-#include <chrono>
-#include <iostream>
-#include <span>
-#include <string>
-#include <thread>
-#include <vector>
-
-int main()
-{
-    const std::string endpoint_config_path = "config/tutorials/endpoint/reader.json";
-    const hakoniwa::pdu::PduKey pdu_key{"Drone", "pos"};
-
-    hakoniwa::pdu::Endpoint endpoint("bridge_reader", HAKO_PDU_ENDPOINT_DIRECTION_IN);
-    if (endpoint.open(endpoint_config_path) != HAKO_PDU_ERR_OK) {
-        std::cerr << "Failed to open endpoint" << std::endl;
-        return 1;
-    }
-    const std::size_t pdu_size = endpoint.get_pdu_size(pdu_key);
-    if (pdu_size == 0) {
-        std::cerr << "PDU size is 0" << std::endl;
-        return 1;
-    }
-
-    const auto channel_id = endpoint.get_pdu_channel_id(pdu_key);
-    if (channel_id < 0) {
-        std::cerr << "Failed to resolve channel" << std::endl;
-        return 1;
-    }
-    const hakoniwa::pdu::PduResolvedKey resolved_key{"Drone", channel_id};
-    endpoint.subscribe_on_recv_callback(
-        resolved_key,
-        [pdu_size](const hakoniwa::pdu::PduResolvedKey&, std::span<const std::byte> data) {
-            const std::size_t size = std::min(pdu_size, data.size());
-            const auto begin = reinterpret_cast<const char*>(data.data());
-            const auto end = begin + size;
-            const auto nul = std::find(begin, end, '\0');
-            std::string text(begin, nul);
-            std::cout << "received bytes=" << size << " text=\"" << text << "\"" << std::endl;
-        });
-
-    if (endpoint.start() != HAKO_PDU_ERR_OK) {
-        std::cerr << "Failed to start endpoint" << std::endl;
-        return 1;
-    }
-
-    if (endpoint.start() != HAKO_PDU_ERR_OK) {
-        std::cerr << "Failed to start endpoint" << std::endl;
-        return 1;
-    }
-
-    for (;;) {
-        endpoint.process_recv_events();
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
-}
+Reader:
+```bash
+build/examples/bridge_reader <endpoint.json> <robot> <pdu> [interval_ms]
 ```
 
 ## Run flow (daemon + writer + reader)
@@ -216,6 +95,11 @@ build/examples/bridge_writer \
 Expected output:
 - `bridge_writer` prints `sent seq=...`
 - `bridge_reader` prints `recv bytes=... text="ts=... seq=..."`
+
+### Immediate (atomic)
+
+Use `config/tutorials/bridge-immediate-atomic.json` and run the same steps as the default example.
+The atomic group waits until all PDUs in the group have updated before a transfer.
 
 ### Throttle (interval 100ms)
 
@@ -290,3 +174,25 @@ Expected output:
 - `immediate`: `docs/tutorials/immediate.md`
 - `throttle`: `docs/tutorials/throttle.md`
 - `ticker`: `docs/tutorials/ticker.md`
+
+## Advanced example (two nodes, TCP)
+
+The integration configs under `test/config/tcp/` connect two nodes over TCP.
+
+Node 1:
+```bash
+./build/hakoniwa-pdu-bridge \
+  test/config/tcp/bridge.json \
+  1000 \
+  test/config/tcp/endpoints.json \
+  node1
+```
+
+Node 2:
+```bash
+./build/hakoniwa-pdu-bridge \
+  test/config/tcp/bridge.json \
+  1000 \
+  test/config/tcp/endpoints.json \
+  node2
+```

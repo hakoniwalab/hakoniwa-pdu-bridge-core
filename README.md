@@ -150,9 +150,9 @@ If shared libraries are not found at runtime, add `LD_LIBRARY_PATH` (Linux) or `
 
 ```bash
 ./build/hakoniwa-pdu-bridge \
-  config/sample/simple-bridge.json \
+  config/tutorials/bridge-immediate.json \
   1000 \
-  test/config/core_flow/endpoints.json \
+  config/tutorials/endpoint_container.json \
   node1
 ```
 
@@ -173,6 +173,10 @@ If shared libraries are not found at runtime, add `LD_LIBRARY_PATH` (Linux) or `
   test/config/tcp/endpoints.json \
   node2
 ```
+
+Notes:
+- These are integration configs under `test/config/tcp/`.
+- The same `endpoints.json` contains both `node1` and `node2`; each daemon selects its node by `node_name`.
 
 ---
 
@@ -214,6 +218,14 @@ Expected output:
 If you see `PDU size is 0`, check that:
 - the `robot`/`pdu` names match your endpoint configs
 - your endpoint config file path is correct
+
+## Troubleshooting
+
+- `PDU size is 0`: the `robot`/`pdu` pair does not exist in the endpoint `pdu_def_path` JSON.
+- `Failed to open endpoint`: `endpoint.json` path or `config_path` inside it is wrong.
+- `Bridge build failed: ... endpoint not found`: the `endpointId` in `bridge.json` does not exist in `endpoint_container.json` for the selected `node_name`.
+- No data arrives on reader: check endpoint directions (`in`/`out`) and that ports in `config/tutorials/comm/` are not used by other processes.
+- Schema validation fails: install `jsonschema` for the Python checker or use `ajv` for the JSON schema.
 
 ## Tests
 
@@ -265,6 +277,7 @@ Policy-specific tutorials live under `docs/tutorials/`:
 
 Required top-level fields:
 - `version` (currently `2.0.0`)
+- `time_source_type`
 - `transferPolicies`
 - `nodes`
 - `pduKeyGroups`
@@ -292,15 +305,15 @@ ajv validate -s config/schema/bridge-schema.json -d bridge.json
 
 `endpoint_container.json` is the **EndpointContainer** config read by `hakoniwa-pdu-endpoint`. It is a list grouped by `nodeId`.
 
-Example (`test/config/core_flow/endpoints.json`):
+Example (`config/tutorials/endpoint_container.json`):
 
 ```json
 [
   {
     "nodeId": "node1",
     "endpoints": [
-      { "id": "n1-epSrc", "mode": "local", "config_path": "../../../config/sample/endpoint/n1-epSrc.json", "direction": "out" },
-      { "id": "n1-epDst", "mode": "local", "config_path": "../../../config/sample/endpoint/n1-epDst.json", "direction": "in" }
+      { "id": "n1-epSrc", "mode": "local", "config_path": "endpoint/bridge-src.json", "direction": "in" },
+      { "id": "n1-epDst", "mode": "local", "config_path": "endpoint/bridge-dst.json", "direction": "out" }
     ]
   }
 ]
@@ -325,6 +338,8 @@ If `immediate` has `atomic: true`, all PDUs in the same `transferPdus` group are
 - does not guarantee identical generation timestamps for each PDU
 
 **Important:** When using `atomic: true`, include `hako_msgs/SimTime` to signal time.
+
+Example config: `config/tutorials/bridge-immediate-atomic.json`.
 
 ---
 

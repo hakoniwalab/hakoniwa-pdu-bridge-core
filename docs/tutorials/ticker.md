@@ -22,8 +22,8 @@ Use `config/tutorials/bridge-ticker.json`:
     {
       "nodeId": "node1",
       "endpoints": [
-        { "id": "n1-epSrc", "mode": "local", "config_path": "../sample/endpoint/n1-epSrc.json", "direction": "out" },
-        { "id": "n1-epDst", "mode": "local", "config_path": "../sample/endpoint/n1-epDst.json", "direction": "in" }
+        { "id": "n1-epSrc", "mode": "local", "config_path": "endpoint/bridge-src.json", "direction": "in" },
+        { "id": "n1-epDst", "mode": "local", "config_path": "endpoint/bridge-dst.json", "direction": "out" }
       ]
     }
   ],
@@ -55,7 +55,7 @@ Use `config/tutorials/bridge-ticker.json`:
 ./build/hakoniwa-pdu-bridge \
   config/tutorials/bridge-ticker.json \
   1000 \
-  test/config/core_flow/endpoints.json \
+  config/tutorials/endpoint_container.json \
   node1
 ```
 

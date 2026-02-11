@@ -22,8 +22,8 @@ Use `config/tutorials/bridge-immediate.json`:
     {
       "nodeId": "node1",
       "endpoints": [
-        { "id": "n1-epSrc", "mode": "local", "config_path": "../sample/endpoint/n1-epSrc.json", "direction": "out" },
-        { "id": "n1-epDst", "mode": "local", "config_path": "../sample/endpoint/n1-epDst.json", "direction": "in" }
+        { "id": "n1-epSrc", "mode": "local", "config_path": "endpoint/bridge-src.json", "direction": "in" },
+        { "id": "n1-epDst", "mode": "local", "config_path": "endpoint/bridge-dst.json", "direction": "out" }
       ]
     }
   ],
@@ -55,7 +55,7 @@ Use `config/tutorials/bridge-immediate.json`:
 ./build/hakoniwa-pdu-bridge \
   config/tutorials/bridge-immediate.json \
   1000 \
-  test/config/core_flow/endpoints.json \
+  config/tutorials/endpoint_container.json \
   node1
 ```
 
@@ -73,3 +73,6 @@ You can make an immediate policy atomic by setting `atomic: true`:
 ```
 
 When atomic, the bridge waits until all PDUs in the transfer group have updated before sending them together.
+
+Ready-to-run config:
+- `config/tutorials/bridge-immediate-atomic.json`
