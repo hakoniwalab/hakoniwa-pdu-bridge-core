@@ -222,7 +222,7 @@ void hakoniwa::pdu::bridge::TransferAtomicPduGroup::try_transfer(
     (void)pdu_key; // Not used in this context as we transfer the whole group
     (void)data;    // Not used
     if (!is_active_) {
-        std::cerr << "INFO: TransferAtomicPduGroup is inactive. Skipping transfer." << std::endl;
+        //std::cerr << "INFO: TransferAtomicPduGroup is inactive. Skipping transfer." << std::endl;
         return;
     }
     // Event-driven policies gate transfers by should_transfer().
