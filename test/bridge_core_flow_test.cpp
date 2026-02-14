@@ -259,7 +259,10 @@ TEST(BridgeCoreFlowTest, PolicyInstanceIsIndependent) {
     std::vector<std::byte> recv_buffer(16);
     size_t received_size = 0;
 
-    // Time: 10ms. Both connections should transfer at the same tick.
+    // Prime ticker policy (first check initializes schedule).
+    time_source->advance_time(10000);
+    bridge_core->cyclic_trigger();
+    // Next tick performs the first transfer.
     time_source->advance_time(10000);
     bridge_core->cyclic_trigger();
 
@@ -287,6 +290,51 @@ TEST(BridgeCoreFlowTest, PolicyInstanceIsIndependent) {
     EXPECT_EQ(dst2_ep->recv(key2, recv_buffer, received_size), HAKO_PDU_ERR_OK);
     recv_buffer.resize(received_size);
     EXPECT_EQ(recv_buffer, next_pdu_data);
+}
+
+TEST(BridgeCoreFlowTest, PolicyInstanceIsIndependentWithinSingleConnection) {
+    auto policy_fanout_config = [](const std::string& filename) {
+        return config_path(filename, "policy_fanout");
+    };
+
+    std::shared_ptr<hakoniwa::pdu::EndpointContainer> endpoint_container =
+        std::make_shared<hakoniwa::pdu::EndpointContainer>("node1", policy_fanout_config("endpoints.json"));
+    HakoPduErrorType init_ret = endpoint_container->initialize();
+    ASSERT_EQ(init_ret, HAKO_PDU_ERR_OK) << endpoint_container->last_error();
+
+    std::shared_ptr<hakoniwa::time_source::ITimeSource> itime_source =
+        hakoniwa::time_source::create_time_source("virtual", 0);
+    auto time_source = std::static_pointer_cast<hakoniwa::time_source::VirtualTimeSource>(itime_source);
+
+    auto result = hakoniwa::pdu::bridge::build(policy_fanout_config("bridge.json"), "node1", time_source, endpoint_container);
+    ASSERT_TRUE(result.ok()) << result.error_message;
+    auto bridge_core = std::move(result.core);
+
+    ASSERT_TRUE(bridge_core != nullptr);
+    ASSERT_EQ(endpoint_container->start_all(), HAKO_PDU_ERR_OK);
+    bridge_core->start();
+
+    auto src1_ep = endpoint_container->ref("src1");
+    auto dst1_ep = endpoint_container->ref("dst1");
+
+    hakoniwa::pdu::PduKey key1 = {"TestRobot", "pdu1"};
+    hakoniwa::pdu::PduKey key2 = {"TestRobot", "pdu2"};
+    std::vector<std::byte> pdu_data(16, std::byte(0xAB));
+    ASSERT_EQ(src1_ep->send(key1, pdu_data), HAKO_PDU_ERR_OK);
+    ASSERT_EQ(src1_ep->send(key2, pdu_data), HAKO_PDU_ERR_OK);
+
+    std::vector<std::byte> recv_buffer(16);
+    size_t received_size = 0;
+
+    // Prime ticker policy (first check initializes schedule).
+    time_source->advance_time(10000);
+    bridge_core->cyclic_trigger();
+    // Next tick performs the first transfer.
+    time_source->advance_time(10000);
+    bridge_core->cyclic_trigger();
+
+    EXPECT_EQ(dst1_ep->recv(key1, recv_buffer, received_size), HAKO_PDU_ERR_OK);
+    EXPECT_EQ(dst1_ep->recv(key2, recv_buffer, received_size), HAKO_PDU_ERR_OK);
 }
 
 }
