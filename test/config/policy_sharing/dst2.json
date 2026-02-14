@@ -1,0 +1,6 @@
+{
+    "name": "dst2",
+    "pdu_def_path": "pdudef.json",
+    "cache": "../core_flow/cache/internal_buffer.json",
+    "comm": null
+}

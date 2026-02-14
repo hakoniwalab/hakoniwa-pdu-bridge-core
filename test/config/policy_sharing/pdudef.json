@@ -1,0 +1,47 @@
+{
+  "robots": [
+    {
+      "name": "TestRobot",
+      "shm_pdu_writers": [
+        {
+          "type": "hako_msgs/TestPdu",
+          "org_name": "pdu1",
+          "name": "TestRobot_pdu1",
+          "channel_id": 100,
+          "pdu_size": 16,
+          "write_cycle": 1,
+          "method_type": "SHM"
+        },
+        {
+          "type": "hako_msgs/TestPdu",
+          "org_name": "pdu2",
+          "name": "TestRobot_pdu2",
+          "channel_id": 101,
+          "pdu_size": 16,
+          "write_cycle": 1,
+          "method_type": "SHM"
+        }
+      ],
+      "shm_pdu_readers": [
+        {
+          "type": "hako_msgs/TestPdu",
+          "org_name": "pdu1",
+          "name": "TestRobot_pdu1",
+          "channel_id": 100,
+          "pdu_size": 16,
+          "write_cycle": 1,
+          "method_type": "SHM"
+        },
+        {
+          "type": "hako_msgs/TestPdu",
+          "org_name": "pdu2",
+          "name": "TestRobot_pdu2",
+          "channel_id": 101,
+          "pdu_size": 16,
+          "write_cycle": 1,
+          "method_type": "SHM"
+        }
+      ]
+    }
+  ]
+}

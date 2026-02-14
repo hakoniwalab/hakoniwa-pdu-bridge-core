@@ -1,0 +1,68 @@
+{
+  "version": "2.0.0",
+  "transferPolicies": {
+    "shared_ticker_policy": {
+      "type": "ticker",
+      "intervalMs": 10
+    }
+  },
+  "nodes": [
+    {
+      "id": "node1"
+    }
+  ],
+  "pduKeyGroups": {
+    "pdu_group1": [
+      {
+        "id": "pdu1",
+        "robot_name": "TestRobot",
+        "pdu_name": "pdu1"
+      }
+    ],
+    "pdu_group2": [
+        {
+          "id": "pdu2",
+          "robot_name": "TestRobot",
+          "pdu_name": "pdu2"
+        }
+      ]
+  },
+  "connections": [
+    {
+      "id": "conn1",
+      "nodeId": "node1",
+      "source": {
+        "endpointId": "src1"
+      },
+      "destinations": [
+        {
+          "endpointId": "dst1"
+        }
+      ],
+      "transferPdus": [
+        {
+          "pduKeyGroupId": "pdu_group1",
+          "policyId": "shared_ticker_policy"
+        }
+      ]
+    },
+    {
+      "id": "conn2",
+      "nodeId": "node1",
+      "source": {
+        "endpointId": "src2"
+      },
+      "destinations": [
+        {
+          "endpointId": "dst2"
+        }
+      ],
+      "transferPdus": [
+        {
+          "pduKeyGroupId": "pdu_group2",
+          "policyId": "shared_ticker_policy"
+        }
+      ]
+    }
+  ]
+}

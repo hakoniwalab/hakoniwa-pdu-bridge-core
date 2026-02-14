@@ -47,6 +47,31 @@ namespace hakoniwa::pdu::bridge {
             return std::nullopt;
         }
     }
+    std::shared_ptr<IPduTransferPolicy> create_policy_instance(
+        const TransferPolicy& policy_def,
+        std::string& error_message)
+    {
+        if (policy_def.type == "immediate") {
+            bool is_atomic = policy_def.atomic.value_or(false);
+            return std::make_shared<ImmediatePolicy>(is_atomic);
+        }
+        if (policy_def.type == "throttle") {
+            if (!policy_def.intervalMs) {
+                error_message = "BridgeLoader: throttle policy needs intervalMs";
+                return nullptr;
+            }
+            return std::make_shared<ThrottlePolicy>(static_cast<uint64_t>(*policy_def.intervalMs) * 1000);
+        }
+        if (policy_def.type == "ticker") {
+            if (!policy_def.intervalMs) {
+                error_message = "BridgeLoader: ticker policy needs intervalMs";
+                return nullptr;
+            }
+            return std::make_shared<TickerPolicy>(static_cast<uint64_t>(*policy_def.intervalMs) * 1000);
+        }
+        error_message = "BridgeLoader: Unknown transfer policy type: " + policy_def.type;
+        return nullptr;
+    }
     BridgeBuildResult build(const std::string& config_file_path, 
         const std::string& node_name, 
         std::shared_ptr<hakoniwa::time_source::ITimeSource> time_source,
@@ -79,35 +104,6 @@ namespace hakoniwa::pdu::bridge {
         );
 
         /*
-         * transfer policy section
-         */
-        std::map<std::string, std::shared_ptr<IPduTransferPolicy>> policy_map;
-        for (const auto& pair : bridge_config.transferPolicies) {
-            const auto& id = pair.first;
-            const auto& policy_def = pair.second;
-            if (policy_def.type == "immediate") {
-                bool is_atomic = policy_def.atomic.value_or(false);
-                policy_map[id] = std::make_shared<ImmediatePolicy>(is_atomic);
-            } else if (policy_def.type == "throttle") {
-                if (!policy_def.intervalMs) {
-                    result.error_message = "BridgeLoader: throttle policy needs intervalMs";
-                    return result;
-                }
-                policy_map[id] = std::make_shared<ThrottlePolicy>(static_cast<uint64_t>(*policy_def.intervalMs) * 1000); // Convert to microseconds
-            } else if (policy_def.type == "ticker") {
-                if (!policy_def.intervalMs) {
-                    result.error_message = "BridgeLoader: ticker policy needs intervalMs";
-                    return result;
-                }
-                policy_map[id] = std::make_shared<TickerPolicy>(static_cast<uint64_t>(*policy_def.intervalMs) * 1000); // Convert to microseconds
-            }
-            else {
-                result.error_message = "BridgeLoader: Unknown transfer policy type: " + policy_def.type;
-                return result;
-            }
-        }
-
-        /*
          * TransferPdu && connection section
          */
         for (const auto& conn_def : bridge_config.connections) {
@@ -116,6 +112,7 @@ namespace hakoniwa::pdu::bridge {
             }
             bool epoch_validation = conn_def.epoch_validation.value_or(false);
             auto connection = std::make_unique<BridgeConnection>(conn_def.nodeId, conn_def.id, epoch_validation);
+            std::map<std::string, std::shared_ptr<IPduTransferPolicy>> connection_policy_map;
             
             std::shared_ptr<hakoniwa::pdu::Endpoint> src_ep = endpoint_container->ref(conn_def.source.endpointId);
             if (!src_ep) {
@@ -131,12 +128,12 @@ namespace hakoniwa::pdu::bridge {
                 }
 
                 for (const auto& trans_pdu_def : conn_def.transferPdus) {
-                    auto pit = policy_map.find(trans_pdu_def.policyId);
-                    if (pit == policy_map.end()) {
+                    auto policy_def_it = bridge_config.transferPolicies.find(trans_pdu_def.policyId);
+                    if (policy_def_it == bridge_config.transferPolicies.end()) {
                         result.error_message = "BridgeLoader: Transfer policy not found: " + trans_pdu_def.policyId;
                         return result;
                     }
-                    const auto& policy_def = bridge_config.transferPolicies.at(trans_pdu_def.policyId);
+                    const auto& policy_def = policy_def_it->second;
 
                     auto key_group_it = bridge_config.pduKeyGroups.find(trans_pdu_def.pduKeyGroupId);
                     if (key_group_it == bridge_config.pduKeyGroups.end()) {
@@ -155,6 +152,14 @@ namespace hakoniwa::pdu::bridge {
                         auto transfer_group = std::make_unique<TransferAtomicPduGroup>(pdu_keys, immediate_policy, time_source, src_ep, dst_ep);
                         connection->add_transfer_pdu(std::move(transfer_group));
                     } else {
+                        auto pit = connection_policy_map.find(trans_pdu_def.policyId);
+                        if (pit == connection_policy_map.end()) {
+                            auto new_policy = create_policy_instance(policy_def, result.error_message);
+                            if (!new_policy) {
+                                return result;
+                            }
+                            pit = connection_policy_map.emplace(trans_pdu_def.policyId, std::move(new_policy)).first;
+                        }
                         auto policy = pit->second;
                         for (const auto& pdu_key_def : pdu_keys) {
                             auto transfer_pdu = std::make_unique<TransferPdu>(pdu_key_def, policy, time_source, src_ep, dst_ep);
