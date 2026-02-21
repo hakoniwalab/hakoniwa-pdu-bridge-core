@@ -1,5 +1,6 @@
 #include "hakoniwa/pdu/bridge/bridge_builder.hpp"
 #include "hakoniwa/pdu/bridge/bridge_core.hpp"
+#include "hakoniwa/pdu/bridge/bridge_monitor_runtime.hpp"
 #include "hakoniwa/pdu/endpoint.hpp"
 #include "hakoniwa/time_source/time_source_factory.hpp"
 #include "hakoniwa/time_source/time_source.hpp"
@@ -14,6 +15,7 @@
 #include <vector>
 #include <cstddef>
 #include <atomic>
+#include <optional>
 
 namespace hakoniwa::pdu::bridge::test {
 
@@ -42,7 +44,7 @@ TEST(BridgeCoreFlowTest, ImmediatePolicyFlow) {
 
     auto result = hakoniwa::pdu::bridge::build(config_path("bridge-core-flow-test.json"), "node1", time_source, endpoint_container);
     ASSERT_TRUE(result.ok()) << result.error_message;
-    auto bridge_core = std::move(result.core);
+    std::shared_ptr<BridgeCore> bridge_core(std::move(result.core));
 
     ASSERT_TRUE(bridge_core != nullptr);
     ASSERT_EQ(endpoint_container->list_endpoint_ids().size(), 2U);
@@ -98,7 +100,7 @@ TEST(BridgeCoreFlowTest, AtomicPolicyFlow) {
 
     auto result = hakoniwa::pdu::bridge::build(config_path("bridge-atomic-core-test.json"), "node1", time_source, endpoint_container);
     ASSERT_TRUE(result.ok()) << result.error_message;
-    auto bridge_core = std::move(result.core);
+    std::shared_ptr<BridgeCore> bridge_core(std::move(result.core));
 
     ASSERT_TRUE(bridge_core != nullptr);
     ASSERT_EQ(endpoint_container->start_all(), HAKO_PDU_ERR_OK);
@@ -335,6 +337,206 @@ TEST(BridgeCoreFlowTest, PolicyInstanceIsIndependentWithinSingleConnection) {
 
     EXPECT_EQ(dst1_ep->recv(key1, recv_buffer, received_size), HAKO_PDU_ERR_OK);
     EXPECT_EQ(dst1_ep->recv(key2, recv_buffer, received_size), HAKO_PDU_ERR_OK);
+}
+
+TEST(BridgeCoreFlowTest, MonitorAttachDetachLifecycle) {
+    std::shared_ptr<hakoniwa::pdu::EndpointContainer> endpoint_container =
+        std::make_shared<hakoniwa::pdu::EndpointContainer>("node1", config_path("endpoints.json"));
+    ASSERT_EQ(endpoint_container->initialize(), HAKO_PDU_ERR_OK);
+
+    std::shared_ptr<hakoniwa::time_source::ITimeSource> time_source =
+        hakoniwa::time_source::create_time_source("real", 1000);
+    auto result = hakoniwa::pdu::bridge::build(config_path("bridge-core-flow-test.json"), "node1", time_source, endpoint_container);
+    ASSERT_TRUE(result.ok()) << result.error_message;
+    std::shared_ptr<BridgeCore> bridge_core(std::move(result.core));
+    ASSERT_TRUE(bridge_core != nullptr);
+
+    ASSERT_EQ(endpoint_container->start_all(), HAKO_PDU_ERR_OK);
+    bridge_core->start();
+    auto monitor_runtime = std::make_shared<BridgeMonitorRuntime>(bridge_core);
+
+    MonitorSessionSpec spec;
+    spec.connection_id = "conn1";
+    spec.policy.type = "throttle";
+    spec.policy.interval_ms = 100;
+
+    auto session_id = monitor_runtime->attach_monitor(spec);
+    ASSERT_TRUE(session_id.has_value()) << monitor_runtime->get_health().last_error;
+    auto sessions = monitor_runtime->list_monitor_infos();
+    ASSERT_EQ(sessions.size(), 1U);
+    EXPECT_EQ(sessions.front().session_id, *session_id);
+
+    EXPECT_TRUE(monitor_runtime->detach_monitor(*session_id));
+    EXPECT_TRUE(monitor_runtime->detach_monitor(*session_id)); // idempotent
+    EXPECT_TRUE(monitor_runtime->list_monitor_infos().empty());
+}
+
+TEST(BridgeCoreFlowTest, MonitorAttachWithDestinationStreamsData) {
+    std::shared_ptr<hakoniwa::pdu::EndpointContainer> endpoint_container =
+        std::make_shared<hakoniwa::pdu::EndpointContainer>("node1", config_path("endpoints.json"));
+    ASSERT_EQ(endpoint_container->initialize(), HAKO_PDU_ERR_OK);
+
+    std::shared_ptr<hakoniwa::time_source::ITimeSource> time_source =
+        hakoniwa::time_source::create_time_source("real", 1000);
+    auto result = hakoniwa::pdu::bridge::build(config_path("bridge-core-flow-monitor-only-test.json"), "node1", time_source, endpoint_container);
+    ASSERT_TRUE(result.ok()) << result.error_message;
+    std::shared_ptr<BridgeCore> bridge_core(std::move(result.core));
+    ASSERT_TRUE(bridge_core != nullptr);
+
+    ASSERT_EQ(endpoint_container->start_all(), HAKO_PDU_ERR_OK);
+    bridge_core->start();
+    auto monitor_runtime = std::make_shared<BridgeMonitorRuntime>(bridge_core);
+
+    auto src_ep = endpoint_container->ref("n1-epSrc");
+    auto dst_ep = endpoint_container->ref("n1-epDst");
+    ASSERT_TRUE(src_ep != nullptr);
+    ASSERT_TRUE(dst_ep != nullptr);
+
+    const hakoniwa::pdu::PduKey key = {"Drone", "pos"};
+    const hakoniwa::pdu::PduResolvedKey resolved_key{key.robot, src_ep->get_pdu_channel_id(key)};
+    ASSERT_GE(resolved_key.channel_id, 0);
+
+    std::atomic<int> dst_recv_count{0};
+    dst_ep->subscribe_on_recv_callback(resolved_key, [&](const hakoniwa::pdu::PduResolvedKey&, std::span<const std::byte>) {
+        dst_recv_count.fetch_add(1, std::memory_order_relaxed);
+    });
+
+    std::vector<std::byte> payload(src_ep->get_pdu_size(key), std::byte(0x55));
+    ASSERT_EQ(src_ep->send(key, payload), HAKO_PDU_ERR_OK);
+    EXPECT_EQ(dst_recv_count.load(std::memory_order_relaxed), 0);
+
+    MonitorSessionSpec spec;
+    spec.connection_id = "conn1";
+    spec.policy.type = "immediate";
+    spec.destination_endpoint = dst_ep;
+
+    auto session_id = monitor_runtime->attach_monitor(spec);
+    ASSERT_TRUE(session_id.has_value());
+
+    payload.assign(payload.size(), std::byte(0x77));
+    ASSERT_EQ(src_ep->send(key, payload), HAKO_PDU_ERR_OK);
+    EXPECT_EQ(dst_recv_count.load(std::memory_order_relaxed), 1);
+
+    ASSERT_TRUE(monitor_runtime->detach_monitor(*session_id));
+
+    payload.assign(payload.size(), std::byte(0x99));
+    ASSERT_EQ(src_ep->send(key, payload), HAKO_PDU_ERR_OK);
+    EXPECT_EQ(dst_recv_count.load(std::memory_order_relaxed), 1);
+}
+
+TEST(BridgeCoreFlowTest, MonitorAttachRejectsInvalidRequest) {
+    std::shared_ptr<hakoniwa::pdu::EndpointContainer> endpoint_container =
+        std::make_shared<hakoniwa::pdu::EndpointContainer>("node1", config_path("endpoints.json"));
+    ASSERT_EQ(endpoint_container->initialize(), HAKO_PDU_ERR_OK);
+
+    std::shared_ptr<hakoniwa::time_source::ITimeSource> time_source =
+        hakoniwa::time_source::create_time_source("real", 1000);
+    auto result = hakoniwa::pdu::bridge::build(config_path("bridge-core-flow-test.json"), "node1", time_source, endpoint_container);
+    ASSERT_TRUE(result.ok()) << result.error_message;
+    std::shared_ptr<BridgeCore> bridge_core(std::move(result.core));
+    ASSERT_TRUE(bridge_core != nullptr);
+
+    ASSERT_EQ(endpoint_container->start_all(), HAKO_PDU_ERR_OK);
+    bridge_core->start();
+    auto monitor_runtime = std::make_shared<BridgeMonitorRuntime>(bridge_core);
+
+    MonitorSessionSpec bad_conn;
+    bad_conn.connection_id = "unknown-connection";
+    bad_conn.policy.type = "throttle";
+    bad_conn.policy.interval_ms = 100;
+    EXPECT_FALSE(monitor_runtime->attach_monitor(bad_conn).has_value());
+
+    MonitorSessionSpec bad_policy;
+    bad_policy.connection_id = "conn1";
+    bad_policy.policy.type = "unsupported";
+    EXPECT_FALSE(monitor_runtime->attach_monitor(bad_policy).has_value());
+
+    auto dst_ep = endpoint_container->ref("n1-epDst");
+    ASSERT_TRUE(dst_ep != nullptr);
+    MonitorSessionSpec bad_filter;
+    bad_filter.connection_id = "conn1";
+    bad_filter.filters.push_back({"Drone", 9999});
+    bad_filter.policy.type = "immediate";
+    bad_filter.destination_endpoint = dst_ep;
+    EXPECT_FALSE(monitor_runtime->attach_monitor(bad_filter).has_value());
+    EXPECT_TRUE(monitor_runtime->list_monitor_infos().empty());
+
+    MonitorSessionSpec out_of_connection;
+    out_of_connection.connection_id = "conn1";
+    out_of_connection.filters.push_back({"Drone", std::nullopt, std::optional<std::string>{"motor"}});
+    out_of_connection.policy.type = "immediate";
+    out_of_connection.destination_endpoint = dst_ep;
+    EXPECT_FALSE(monitor_runtime->attach_monitor(out_of_connection).has_value());
+    EXPECT_TRUE(monitor_runtime->list_monitor_infos().empty());
+
+    bridge_core->stop();
+    MonitorSessionSpec stopped_spec;
+    stopped_spec.connection_id = "conn1";
+    stopped_spec.policy.type = "throttle";
+    stopped_spec.policy.interval_ms = 100;
+    EXPECT_FALSE(monitor_runtime->attach_monitor(stopped_spec).has_value());
+}
+
+TEST(BridgeCoreFlowTest, MonitorMultipleSessionsCanSubscribeSimultaneously) {
+    std::shared_ptr<hakoniwa::pdu::EndpointContainer> endpoint_container =
+        std::make_shared<hakoniwa::pdu::EndpointContainer>("node1", config_path("endpoints.json"));
+    ASSERT_EQ(endpoint_container->initialize(), HAKO_PDU_ERR_OK);
+
+    std::shared_ptr<hakoniwa::time_source::ITimeSource> time_source =
+        hakoniwa::time_source::create_time_source("real", 1000);
+    auto result = hakoniwa::pdu::bridge::build(config_path("bridge-core-flow-monitor-only-test.json"), "node1", time_source, endpoint_container);
+    ASSERT_TRUE(result.ok()) << result.error_message;
+    std::shared_ptr<BridgeCore> bridge_core(std::move(result.core));
+    ASSERT_TRUE(bridge_core != nullptr);
+
+    ASSERT_EQ(endpoint_container->start_all(), HAKO_PDU_ERR_OK);
+    bridge_core->start();
+    auto monitor_runtime = std::make_shared<BridgeMonitorRuntime>(bridge_core);
+
+    auto src_ep = endpoint_container->ref("n1-epSrc");
+    auto dst_ep = endpoint_container->ref("n1-epDst");
+    ASSERT_TRUE(src_ep != nullptr);
+    ASSERT_TRUE(dst_ep != nullptr);
+
+    const hakoniwa::pdu::PduKey key = {"Drone", "pos"};
+    const hakoniwa::pdu::PduResolvedKey resolved_key{key.robot, src_ep->get_pdu_channel_id(key)};
+    ASSERT_GE(resolved_key.channel_id, 0);
+
+    std::atomic<int> dst_recv_count{0};
+    dst_ep->subscribe_on_recv_callback(resolved_key, [&](const hakoniwa::pdu::PduResolvedKey&, std::span<const std::byte>) {
+        dst_recv_count.fetch_add(1, std::memory_order_relaxed);
+    });
+
+    MonitorSessionSpec spec1;
+    spec1.connection_id = "conn1";
+    spec1.policy.type = "immediate";
+    spec1.destination_endpoint = dst_ep;
+    auto session1 = monitor_runtime->attach_monitor(spec1);
+    ASSERT_TRUE(session1.has_value());
+
+    MonitorSessionSpec spec2;
+    spec2.connection_id = "conn1";
+    spec2.policy.type = "immediate";
+    spec2.destination_endpoint = dst_ep;
+    auto session2 = monitor_runtime->attach_monitor(spec2);
+    ASSERT_TRUE(session2.has_value());
+    ASSERT_NE(*session1, *session2);
+    ASSERT_EQ(monitor_runtime->list_monitor_infos().size(), 2U);
+
+    std::vector<std::byte> payload(src_ep->get_pdu_size(key), std::byte(0x11));
+    ASSERT_EQ(src_ep->send(key, payload), HAKO_PDU_ERR_OK);
+    EXPECT_EQ(dst_recv_count.load(std::memory_order_relaxed), 1);
+
+    ASSERT_TRUE(monitor_runtime->detach_monitor(*session1));
+    payload.assign(payload.size(), std::byte(0x22));
+    ASSERT_EQ(src_ep->send(key, payload), HAKO_PDU_ERR_OK);
+    EXPECT_EQ(dst_recv_count.load(std::memory_order_relaxed), 2);
+
+    ASSERT_TRUE(monitor_runtime->detach_monitor(*session2));
+    payload.assign(payload.size(), std::byte(0x33));
+    ASSERT_EQ(src_ep->send(key, payload), HAKO_PDU_ERR_OK);
+    EXPECT_EQ(dst_recv_count.load(std::memory_order_relaxed), 2);
+    EXPECT_TRUE(monitor_runtime->list_monitor_infos().empty());
 }
 
 }

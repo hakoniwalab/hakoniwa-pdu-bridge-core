@@ -111,11 +111,24 @@ namespace hakoniwa::pdu::bridge {
                 continue; // Skip connections not intended for this node
             }
             bool epoch_validation = conn_def.epoch_validation.value_or(false);
-            auto connection = std::make_unique<BridgeConnection>(conn_def.nodeId, conn_def.id, epoch_validation);
             std::shared_ptr<hakoniwa::pdu::Endpoint> src_ep = endpoint_container->ref(conn_def.source.endpointId);
             if (!src_ep) {
                 result.error_message = "BridgeLoader: Source endpoint not found: " + conn_def.source.endpointId;
                 return result;
+            }
+            auto connection = std::make_unique<BridgeConnection>(conn_def.nodeId, conn_def.id, epoch_validation, src_ep);
+            for (const auto& trans_pdu_def : conn_def.transferPdus) {
+                auto key_group_it = bridge_config.pduKeyGroups.find(trans_pdu_def.pduKeyGroupId);
+                if (key_group_it == bridge_config.pduKeyGroups.end()) {
+                    result.error_message = "BridgeLoader: PduKeyGroup not found: " + trans_pdu_def.pduKeyGroupId;
+                    return result;
+                }
+                for (const auto& pdu_key_def : key_group_it->second) {
+                    core->register_connection_transfer_pdu_key(
+                        conn_def.id,
+                        pdu_key_def.robot_name,
+                        pdu_key_def.pdu_name);
+                }
             }
 
             for (const auto& dest_def : conn_def.destinations) {
@@ -139,7 +152,6 @@ namespace hakoniwa::pdu::bridge {
                         return result;
                     }
                     const auto& pdu_keys = key_group_it->second;
-
                     bool is_immediate_atomic = (policy_def.type == "immediate") && policy_def.atomic.value_or(false);
                     if (is_immediate_atomic) {
                         auto immediate_policy = std::make_shared<ImmediatePolicy>(true);

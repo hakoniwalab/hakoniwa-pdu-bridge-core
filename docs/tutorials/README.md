@@ -38,8 +38,14 @@ The source code is in:
 ### Build examples
 
 ```bash
-cmake -S . -B build -DHAKO_PDU_BRIDGE_BUILD_EXAMPLES=ON
+cmake -S . -B build
 cmake --build build
+```
+
+If you already configured `build` with examples disabled, reconfigure once:
+
+```bash
+cmake -S . -B build -DHAKO_PDU_BRIDGE_BUILD_EXAMPLES=ON
 ```
 
 This builds:
@@ -173,6 +179,8 @@ Expected output:
 - `immediate`: `docs/tutorials/immediate.md`
 - `throttle`: `docs/tutorials/throttle.md`
 - `ticker`: `docs/tutorials/ticker.md`
+- `on-demand monitor`: `docs/tutorials/monitor.md`
+  - includes `tail` argument meanings (`policy`, `interval_ms`, `duration_sec`) and output format
 
 ## Advanced example (two nodes, TCP)
 

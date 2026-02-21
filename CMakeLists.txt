@@ -93,6 +93,7 @@ target_include_directories(hakoniwa_pdu_bridge_lib
 
 # Add the executable
 add_executable(hakoniwa-pdu-bridge src/daemon.cpp)
+add_executable(hakoniwa-pdu-bridge-monitor tools/bridge_monitor_cli.cpp)
 
 # Explicitly add the hakoniwa core include directory for this project
 if(APPLE)
@@ -110,7 +111,15 @@ target_link_libraries(hakoniwa-pdu-bridge
   hakoniwa_pdu_bridge_lib
   shakoc
 )
+target_link_libraries(hakoniwa-pdu-bridge-monitor
+  PRIVATE
+    hakoniwa_pdu_bridge_lib
+)
 target_link_directories(hakoniwa-pdu-bridge 
+  PRIVATE
+    /usr/local/hakoniwa/lib
+)
+target_link_directories(hakoniwa-pdu-bridge-monitor
   PRIVATE
     /usr/local/hakoniwa/lib
 )
@@ -120,7 +129,7 @@ enable_testing()
 # Add our test subdirectory
 add_subdirectory(test)
 
-option(HAKO_PDU_BRIDGE_BUILD_EXAMPLES "Build bridge examples" OFF)
+option(HAKO_PDU_BRIDGE_BUILD_EXAMPLES "Build bridge examples" ON)
 if(HAKO_PDU_BRIDGE_BUILD_EXAMPLES)
   add_subdirectory(examples)
 endif()

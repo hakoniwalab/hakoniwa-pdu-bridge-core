@@ -1,0 +1,6 @@
+{
+  "name": "tutorial-monitor-client",
+  "pdu_def_path": "../../sample/endpoint/pdudef.json",
+  "cache": "../cache/buffer.json",
+  "comm": "client_comm_tcp_9200.json"
+}

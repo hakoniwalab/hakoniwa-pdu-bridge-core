@@ -31,7 +31,7 @@ private:
 } // namespace
 
 TEST(BridgeConnectionTest, PauseResumeDisablesTransferPdus) {
-    BridgeConnection connection("node1", "conn1", true);
+    BridgeConnection connection("node1", "conn1", true, nullptr);
 
     auto pdu1 = std::make_unique<DummyTransferPdu>();
     auto pdu2 = std::make_unique<DummyTransferPdu>();

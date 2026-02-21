@@ -1,0 +1,6 @@
+{
+  "name": "tutorial-monitor-mux",
+  "pdu_def_path": "../../sample/endpoint/pdudef.json",
+  "cache": "../cache/buffer.json",
+  "comm": "mux_comm_tcp_server_9200.json"
+}

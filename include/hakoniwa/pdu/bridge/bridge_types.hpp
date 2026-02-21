@@ -4,8 +4,13 @@
 #include <vector>
 #include <map>
 #include <optional>
+#include <memory>
 #include <nlohmann/json.hpp> // Added for from_json functions
 #include "hakoniwa/pdu/endpoint_types.h"
+
+namespace hakoniwa::pdu {
+class Endpoint;
+}
 
 namespace hakoniwa::pdu::bridge {
 
@@ -79,6 +84,61 @@ struct BridgeConfig {
     std::vector<WireLink> wireLinks;
     std::map<std::string, std::vector<PduKey>> pduKeyGroups;
     std::vector<Connection> connections;
+};
+
+// On-demand monitor DTOs
+struct MonitorFilter {
+    std::string robot;
+    std::optional<int> channel_id;
+    std::optional<std::string> pdu_name;
+};
+
+struct MonitorPolicy {
+    std::string type;
+    int interval_ms = 0;
+};
+
+struct MonitorSessionSpec {
+    std::string connection_id;
+    std::vector<MonitorFilter> filters;
+    MonitorPolicy policy;
+    std::shared_ptr<hakoniwa::pdu::Endpoint> destination_endpoint;
+};
+
+enum class MonitorSessionState {
+    Created,
+    Active,
+    Draining,
+    Closed
+};
+
+struct MonitorSessionInfo {
+    std::string session_id;
+    std::string connection_id;
+    std::vector<MonitorFilter> filters;
+    MonitorPolicy policy;
+    MonitorSessionState state = MonitorSessionState::Created;
+};
+
+struct BridgeHealthDto {
+    bool running = false;
+    uint64_t uptime_usec = 0;
+    std::string last_error;
+};
+
+struct ConnectionStateDto {
+    std::string connection_id;
+    std::string node_id;
+    bool active = false;
+    uint8_t epoch = 0;
+    bool epoch_validation = false;
+};
+
+struct PduStateDto {
+    std::string connection_id;
+    std::string robot;
+    std::string pdu_name;
+    std::optional<int> channel_id;
 };
 
 // JSON parsing helpers for BridgeConfig DTOs (moved from bridge_loader.cpp)

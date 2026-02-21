@@ -91,11 +91,17 @@ cmake --build build
 
 The binary `build/hakoniwa-pdu-bridge` will be generated.
 
-To build the example programs:
+Example programs are built by default:
+
+```bash
+cmake -S . -B build
+cmake --build build
+```
+
+If your existing build directory was configured with examples disabled, reconfigure once:
 
 ```bash
 cmake -S . -B build -DHAKO_PDU_BRIDGE_BUILD_EXAMPLES=ON
-cmake --build build
 ```
 
 ### Helper scripts
@@ -231,6 +237,60 @@ If it fails, check these first:
 - `Failed to open endpoint`: verify `endpoint.json` and its `config_path` resolution
 - `PDU size is 0`: check `robot`/`pdu` names against the endpoint `pdu_def_path`
 - `No data arrives on reader`: confirm endpoint directions (`in`/`out`) and port conflicts in `config/tutorials/comm/`
+
+## On-Demand Monitor CLI
+
+The monitor client binary is built as `build/hakoniwa-pdu-bridge-monitor` (or `cmake-build/hakoniwa-pdu-bridge-monitor`).
+
+```bash
+# health
+cmake-build/hakoniwa-pdu-bridge-monitor <monitor_endpoint.json> health
+
+# list current bridge connections
+cmake-build/hakoniwa-pdu-bridge-monitor <monitor_endpoint.json> connections
+
+# list monitor sessions
+cmake-build/hakoniwa-pdu-bridge-monitor <monitor_endpoint.json> sessions
+
+# list transferable PDUs in a connection
+cmake-build/hakoniwa-pdu-bridge-monitor <monitor_endpoint.json> list_pdus <connection_id>
+
+# subscribe / unsubscribe
+cmake-build/hakoniwa-pdu-bridge-monitor <monitor_endpoint.json> subscribe <connection_id> throttle 100
+cmake-build/hakoniwa-pdu-bridge-monitor <monitor_endpoint.json> unsubscribe <session_id>
+
+# tail data plane metadata (Ctrl-C to stop)
+cmake-build/hakoniwa-pdu-bridge-monitor <monitor_endpoint.json> tail <connection_id> throttle 100
+
+# tail for 10 seconds
+cmake-build/hakoniwa-pdu-bridge-monitor <monitor_endpoint.json> tail <connection_id> throttle 100 10
+```
+
+Ready-to-run on-demand monitor tutorial (daemon + writer + reader + monitor CLI):
+- `docs/tutorials/monitor.md`
+- bridge-side mux config: `config/tutorials/monitor/mux_endpoint.json`
+- client-side endpoint config: `config/tutorials/monitor/client_endpoint.json`
+
+`tail` arguments:
+- `<connection_id>`: monitor target connection (e.g. `conn1`)
+- `[policy]`: `immediate | throttle | ticker` (default: bridge-side default policy)
+- `[interval_ms]`: required for `throttle`/`ticker` in explicit policy mode (e.g. `100`)
+- `[duration_sec]`: optional auto-stop duration; omit to run until Ctrl-C
+
+`tail` output format:
+```text
+[monitor-data]
+  timestamp_usec: 1771640877548980
+  robot: Drone
+  channel_id: 1
+  pdu_name: pos
+  payload_size: 72
+  epoch: N/A
+```
+
+Notes:
+- `tail` internally performs `list_pdus` + `subscribe`, and auto `unsubscribe` on exit.
+- `epoch` shows `N/A` when payload is not in Hakoniwa PDU metadata format.
 
 ## Troubleshooting
 

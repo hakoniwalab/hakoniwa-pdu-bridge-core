@@ -7,6 +7,8 @@ set(TEST_SOURCES
     bridge_core_flow_test.cpp
     bridge_tcp_flow_test.cpp
     bridge_connection_test.cpp
+    ondemand_control_handler_test.cpp
+    monitor_cli_utils_test.cpp
 )
 
 add_executable(hakoniwa_pdu_bridge_tests ${TEST_SOURCES})

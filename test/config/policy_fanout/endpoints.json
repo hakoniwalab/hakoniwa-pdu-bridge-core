@@ -1,0 +1,19 @@
+[
+  {
+    "nodeId": "node1",
+    "endpoints": [
+      {
+        "id": "src1",
+        "mode": "local",
+        "config_path": "src1.json",
+        "direction": "out"
+      },
+      {
+        "id": "dst1",
+        "mode": "local",
+        "config_path": "dst1.json",
+        "direction": "in"
+      }
+    ]
+  }
+]

@@ -1,0 +1,109 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://hakoniwa-lab.net/schemas/hakoniwa-pdu-bridge-ondemand-control-request-1.0.0.schema.json",
+  "title": "Hakoniwa PDU Bridge On-Demand Control Request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type"],
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": ["subscribe", "unsubscribe", "list_sessions", "list_connections", "list_pdus", "health", "list"],
+      "description": "Control request type. 'list' is deprecated alias of 'list_sessions'."
+    },
+    "request_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "connection_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "filters": {
+      "type": "array",
+      "maxItems": 0,
+      "description": "Reserved for future use. Must be omitted or empty."
+    },
+    "policy": { "$ref": "#/$defs/policy" },
+    "session_id": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "$defs": {
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["immediate", "throttle", "ticker"]
+        },
+        "interval_ms": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "type": { "enum": ["throttle", "ticker"] } }
+          },
+          "then": {
+            "required": ["interval_ms"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "type": { "const": "immediate" } }
+          },
+          "then": {
+            "not": { "required": ["interval_ms"] }
+          }
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "type": { "const": "subscribe" } }
+      },
+      "then": {
+        "required": ["connection_id"]
+      }
+    },
+    {
+      "if": {
+        "properties": { "type": { "const": "unsubscribe" } }
+      },
+      "then": {
+        "required": ["session_id"]
+      }
+    },
+    {
+      "if": {
+        "properties": { "type": { "const": "list_pdus" } }
+      },
+      "then": {
+        "required": ["connection_id"]
+      }
+    },
+    {
+      "if": {
+        "properties": { "type": { "enum": ["list_sessions", "list_connections", "health", "list"] } }
+      },
+      "then": {
+        "not": {
+          "anyOf": [
+            { "required": ["connection_id"] },
+            { "required": ["filters"] },
+            { "required": ["policy"] },
+            { "required": ["session_id"] }
+          ]
+        }
+      }
+    }
+  ]
+}
