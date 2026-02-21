@@ -11,11 +11,16 @@ The core design is to **separate the decision of when to transfer** from **how t
 **This is:**
 - A transfer layer that declares logical PDU flows
 - A definition of which PDUs flow where, under which transfer policy model
+- On-demand monitoring for runtime checks (`health`, `connections`, `list_pdus`, `tail`)
 
 **This is NOT:**
 - A transport implementation (TCP/UDP/WebSocket/Zenoh/SHM, etc.)
 - Delivery guarantees, retries, or persistent queues
 - An endpoint JSON loader (handled by `hakoniwa-pdu-endpoint`)
+
+On-demand runtime introspection is available via monitor CLI:
+- `cmake-build/hakoniwa-pdu-bridge-monitor ...`
+- Tutorial: `docs/tutorials/monitor.md`
 
 ---
 
@@ -307,6 +312,12 @@ If you hit config drift, run the `check_bridge_config.py` command shown in Quick
 - Q: Why are there two config files? A: `bridge.json` declares logical transfers; `endpoint_container.json` declares concrete endpoints and transport details.
 - Q: Why not combine them? A: Keeping timing/flow separate from transport wiring avoids hidden delivery assumptions.
 - Q: What does `atomic: true` guarantee? A: The group transfers only after all PDUs in the group have updated; it does not guarantee identical generation timestamps.
+- Q: `tail` shows no output. Is it broken? A: First confirm source data is being produced (writer running), then check `list_pdus <connection_id>` and `connections`. `tail` only prints when matching data actually arrives.
+- Q: In `tail conn1 throttle 100 10`, what are `100` and `10`? A: `100` is `interval_ms` (throttle period), `10` is `duration_sec` (auto-stop after 10s).
+- Q: Why is `epoch` shown as `N/A`? A: `epoch` is only shown when payload is readable as Hakoniwa PDU metadata format. Otherwise `N/A` is expected.
+- Q: I see `control session connected/disconnected` in bridge logs. Is this an error? A: Usually no. It appears when monitor CLI connects and then exits.
+- Q: I see `TCP Comm send failed: not connected.` once, but command still works. Is this an error? A: Usually transient during connection establishment; if responses are returned, you can ignore it.
+- Q: How can I inspect live bridge data like ROS `topic echo`? A: Use monitor CLI `tail`. Example: `cmake-build/hakoniwa-pdu-bridge-monitor config/tutorials/monitor/client_endpoint.json tail conn1 throttle 100` (or append duration seconds, e.g. `... 10`).
 
 ## Tests
 
