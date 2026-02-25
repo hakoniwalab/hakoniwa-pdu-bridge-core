@@ -141,6 +141,11 @@ install(TARGETS hakoniwa_pdu_bridge_lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
 )
+install(TARGETS
+  hakoniwa-pdu-bridge
+  hakoniwa-pdu-bridge-monitor
+  RUNTIME DESTINATION bin
+)
 install(DIRECTORY include/ DESTINATION include)
 
 configure_package_config_file(
