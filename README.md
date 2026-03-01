@@ -204,6 +204,7 @@ It runs as a Hakoniwa callback asset and uses the managed config set under `conf
 
 Default config paths:
 
+- config root: `config/web_bridge`
 - bridge config: `config/web_bridge/bridge/bridge.json`
 - endpoint container: `config/web_bridge/endpoint/endpoint_container.json`
 - asset config: `config/web_bridge/pdu/drone-pdudef.json`
@@ -213,6 +214,7 @@ Usage:
 
 ```bash
 ./build/hakoniwa-pdu-web-bridge \
+  [--config-root <path>] \
   [--bridge-config <path>] \
   [--endpoint-container <path>] \
   [--asset-config <path>] \
@@ -226,6 +228,7 @@ Usage:
 
 Options:
 
+- `--config-root`: root directory for the managed web bridge config set
 - `--bridge-config`: override `bridge.json`
 - `--endpoint-container`: override endpoint container config
 - `--asset-config`: override Hakoniwa asset pdudef config
@@ -255,8 +258,16 @@ On-demand monitor:
 
 ```bash
 ./build/hakoniwa-pdu-web-bridge \
+  --config-root /usr/local/hakoniwa/share/hakoniwa-pdu-bridge/config/web_bridge \
   --enable-ondemand \
-  --ondemand-mux-config config/web_bridge/monitor/mux_endpoint.json
+  --ondemand-mux-config /usr/local/hakoniwa/share/hakoniwa-pdu-bridge/config/web_bridge/monitor/mux_endpoint.json
+```
+
+Installed example:
+
+```bash
+/usr/local/hakoniwa/bin/hakoniwa-pdu-web-bridge \
+  --config-root /usr/local/hakoniwa/share/hakoniwa-pdu-bridge/config/web_bridge
 ```
 
 Behavior summary:

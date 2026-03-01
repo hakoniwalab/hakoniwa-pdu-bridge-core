@@ -15,3 +15,10 @@ while IFS= read -r file; do
     rm -f "${file}"
   fi
 done < "${MANIFEST}"
+
+mapfile -t installed_dirs < <(sed 's#/*$##' "${MANIFEST}" | xargs -n1 dirname | awk 'NF' | sort -r | uniq)
+for dir in "${installed_dirs[@]}"; do
+  if [[ -d "${dir}" ]]; then
+    rmdir "${dir}" 2>/dev/null || true
+  fi
+done

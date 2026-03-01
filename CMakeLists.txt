@@ -159,6 +159,8 @@ install(TARGETS
   RUNTIME DESTINATION bin
 )
 install(DIRECTORY include/ DESTINATION include)
+install(DIRECTORY config/web_bridge/ DESTINATION share/hakoniwa-pdu-bridge/config/web_bridge)
+install(PROGRAMS tools/run-web-bridge.bash DESTINATION bin)
 
 configure_package_config_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake/hakoniwa_pdu_bridgeConfig.cmake.in

@@ -26,6 +26,7 @@ void log_error(const std::string& message)
 }
 
 struct WebBridgeDaemonOptions {
+    std::string config_root_path;
     std::string bridge_config_path;
     std::string endpoint_container_path;
     std::string asset_config_path;
@@ -60,10 +61,24 @@ std::string make_default_config_path(const std::string& relative_path)
     return (std::filesystem::current_path() / relative_path).lexically_normal().string();
 }
 
+std::string make_config_rooted_path(const std::string& config_root_path, const std::string& relative_path)
+{
+    return (std::filesystem::path(config_root_path) / relative_path).lexically_normal().string();
+}
+
+void apply_config_root(WebBridgeDaemonOptions& options)
+{
+    options.bridge_config_path = make_config_rooted_path(options.config_root_path, "bridge/bridge.json");
+    options.endpoint_container_path = make_config_rooted_path(options.config_root_path, "endpoint/endpoint_container.json");
+    options.asset_config_path = make_config_rooted_path(options.config_root_path, "pdu/drone-pdudef.json");
+    options.ondemand_mux_config_path = make_config_rooted_path(options.config_root_path, "monitor/mux_endpoint.json");
+}
+
 void print_usage(const char* argv0)
 {
     std::cerr
         << "Usage: " << argv0
+        << " [--config-root <path>]"
         << " [--bridge-config <path>]"
         << " [--endpoint-container <path>]"
         << " [--asset-config <path>]"
@@ -84,15 +99,22 @@ bool parse_uint64_arg(const char* value, uint64_t& out_value)
 
 bool parse_args(int argc, char* argv[], WebBridgeDaemonOptions& options)
 {
-    options.bridge_config_path = make_default_config_path("config/web_bridge/bridge/bridge.json");
-    options.endpoint_container_path = make_default_config_path("config/web_bridge/endpoint/endpoint_container.json");
-    options.asset_config_path = make_default_config_path("config/web_bridge/pdu/drone-pdudef.json");
-    options.ondemand_mux_config_path = make_default_config_path("config/web_bridge/monitor/mux_endpoint.json");
+    options.config_root_path = make_default_config_path("config/web_bridge");
+    apply_config_root(options);
     options.node_name = "web_bridge_node1";
     options.asset_name = "WebBridge";
 
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
+        if (arg == "--config-root") {
+            if ((i + 1) >= argc) {
+                std::cerr << "--config-root requires a path" << std::endl;
+                return false;
+            }
+            options.config_root_path = argv[++i];
+            apply_config_root(options);
+            continue;
+        }
         if (arg == "--bridge-config") {
             if ((i + 1) >= argc) {
                 std::cerr << "--bridge-config requires a path" << std::endl;
