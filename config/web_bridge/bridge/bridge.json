@@ -1,0 +1,85 @@
+{
+  "version": "2.0.0",
+  "transferPolicies": {
+    "immediate": { "type": "immediate" },
+    "ticker_20ms": { "type": "ticker", "intervalMs": 20 }
+  },
+  "nodes": [
+    { "id": "web_bridge_node1" }
+  ],
+  "endpoints_config_path": "../endpoint/endpoint_container.json",
+  "endpoints": [
+    {
+      "nodeId": "web_bridge_node1",
+      "endpoints": [
+        {
+          "id": "drone001-shm-ep",
+          "mode": "local",
+          "config_path": "../endpoint/drone001-shm.json",
+          "direction": "inout"
+        },
+        {
+          "id": "drone001-ws-ep",
+          "mode": "local",
+          "config_path": "../endpoint/drone001-ws.json",
+          "direction": "inout"
+        }
+      ]
+    }
+  ],
+  "wireLinks": [],
+  "pduKeyGroups": {
+    "drone001_ws_out_motion": [
+      { "id": "Drone.motor", "robot_name": "Drone", "pdu_name": "motor" },
+      { "id": "Drone.pos", "robot_name": "Drone", "pdu_name": "pos" }
+    ],
+    "drone001_ws_out_status": [
+      { "id": "Drone.battery", "robot_name": "Drone", "pdu_name": "battery" },
+      { "id": "Drone.status", "robot_name": "Drone", "pdu_name": "status" }
+    ],
+    "drone001_ws_out_command_view": [
+      { "id": "Drone.hako_cmd_camera", "robot_name": "Drone", "pdu_name": "hako_cmd_camera" },
+      { "id": "Drone.hako_cmd_camera_move", "robot_name": "Drone", "pdu_name": "hako_cmd_camera_move" },
+      { "id": "Drone.hako_cmd_magnet_holder", "robot_name": "Drone", "pdu_name": "hako_cmd_magnet_holder" },
+      { "id": "Drone.disturb", "robot_name": "Drone", "pdu_name": "disturb" }
+    ],
+    "drone001_ws_in_game_cmd": [
+      { "id": "Drone.hako_cmd_game", "robot_name": "Drone", "pdu_name": "hako_cmd_game" }
+    ],
+    "drone001_ws_in_sensor_stream": [
+      { "id": "Drone.hako_camera_data", "robot_name": "Drone", "pdu_name": "hako_camera_data" },
+      { "id": "Drone.hako_cmd_camera_info", "robot_name": "Drone", "pdu_name": "hako_cmd_camera_info" },
+      { "id": "Drone.hako_status_magnet_holder", "robot_name": "Drone", "pdu_name": "hako_status_magnet_holder" },
+      { "id": "Drone.lidar_points", "robot_name": "Drone", "pdu_name": "lidar_points" },
+      { "id": "Drone.lidar_pos", "robot_name": "Drone", "pdu_name": "lidar_pos" },
+      { "id": "Drone.impulse", "robot_name": "Drone", "pdu_name": "impulse" }
+    ]
+  },
+  "connections": [
+    {
+      "id": "conn_drone001_shm_to_ws",
+      "nodeId": "web_bridge_node1",
+      "source": { "endpointId": "drone001-shm-ep" },
+      "destinations": [
+        { "endpointId": "drone001-ws-ep" }
+      ],
+      "transferPdus": [
+        { "pduKeyGroupId": "drone001_ws_out_motion", "policyId": "ticker_20ms" },
+        { "pduKeyGroupId": "drone001_ws_out_status", "policyId": "ticker_20ms" },
+        { "pduKeyGroupId": "drone001_ws_out_command_view", "policyId": "ticker_20ms" }
+      ]
+    },
+    {
+      "id": "conn_drone001_ws_to_shm",
+      "nodeId": "web_bridge_node1",
+      "source": { "endpointId": "drone001-ws-ep" },
+      "destinations": [
+        { "endpointId": "drone001-shm-ep" }
+      ],
+      "transferPdus": [
+        { "pduKeyGroupId": "drone001_ws_in_game_cmd", "policyId": "immediate" },
+        { "pduKeyGroupId": "drone001_ws_in_sensor_stream", "policyId": "immediate" }
+      ]
+    }
+  ]
+}

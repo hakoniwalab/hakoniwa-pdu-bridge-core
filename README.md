@@ -94,7 +94,11 @@ cmake -S . -B build \
 cmake --build build
 ```
 
-The binary `build/hakoniwa-pdu-bridge` will be generated.
+The following binaries will be generated:
+
+- `build/hakoniwa-pdu-bridge`
+- `build/hakoniwa-pdu-web-bridge`
+- `build/hakoniwa-pdu-bridge-monitor`
 
 Example programs are built by default:
 
@@ -192,6 +196,94 @@ Library integrators can provide their own `ITimeSource` and execution loop.
 Notes:
 - These are integration configs under `test/config/tcp/`.
 - The same `endpoints.json` contains both `node1` and `node2`; each daemon selects its node by `node_name`.
+
+### Web bridge daemon
+
+`hakoniwa-pdu-web-bridge` is the Web bridge daemon for replacing legacy `hakoniwa-webserver`.
+It runs as a Hakoniwa callback asset and uses the managed config set under `config/web_bridge/`.
+
+Default config paths:
+
+- bridge config: `config/web_bridge/bridge/bridge.json`
+- endpoint container: `config/web_bridge/endpoint/endpoint_container.json`
+- asset config: `config/web_bridge/pdu/drone-pdudef.json`
+- WebSocket server: `ws://127.0.0.1:8765`
+
+Usage:
+
+```bash
+./build/hakoniwa-pdu-web-bridge \
+  [--bridge-config <path>] \
+  [--endpoint-container <path>] \
+  [--asset-config <path>] \
+  [--enable-ondemand] \
+  [--ondemand-mux-config <path>] \
+  [--node-name <name>] \
+  [--asset-name <name>] \
+  [--delta-time-step-usec <usec>] \
+  [--disable-real-sleep]
+```
+
+Options:
+
+- `--bridge-config`: override `bridge.json`
+- `--endpoint-container`: override endpoint container config
+- `--asset-config`: override Hakoniwa asset pdudef config
+- `--enable-ondemand`: enable on-demand monitor runtime
+- `--ondemand-mux-config`: override on-demand monitor mux endpoint config
+- `--node-name`: node selector for `EndpointContainer` and `bridge.json`
+- `--asset-name`: Hakoniwa asset name used by `hako_asset_register()`
+- `--delta-time-step-usec`: real-time sleep interval used by the bridge daemon
+- `--disable-real-sleep`: disable real-time sleep in each simulation step
+
+Default:
+
+- `delta_time_step_usec = 20000` (`20ms`)
+- real sleep = enabled
+- on-demand mux config = `config/web_bridge/monitor/mux_endpoint.json`
+
+Example:
+
+```bash
+./build/hakoniwa-pdu-web-bridge \
+  --asset-name WebBridge \
+  --node-name web_bridge_node1 \
+  --delta-time-step-usec 20000
+```
+
+On-demand monitor:
+
+```bash
+./build/hakoniwa-pdu-web-bridge \
+  --enable-ondemand \
+  --ondemand-mux-config config/web_bridge/monitor/mux_endpoint.json
+```
+
+Behavior summary:
+
+- runs as a Hakoniwa callback asset
+- initializes SHM callback endpoint and WebSocket server endpoint
+- executes bridge transfer once per `on_simulation_step()`
+- uses `hakoniwa_callback` time as the bridge policy clock
+- uses a separate `real` time source only for optional wall-clock sleep
+- sleeps for `delta_time_step_usec` in real time after each step when real sleep is enabled
+
+If real sleep is enabled:
+
+- each simulation step ends with a real-time sleep
+- the default sleep is `20ms`
+- this is useful when you want to align WebSocket delivery with wall-clock pacing
+
+If real sleep is disabled:
+
+- the bridge does not sleep in `on_simulation_step()`
+- pacing is left entirely to the Hakoniwa side and caller environment
+
+Unity side:
+
+- packet format: `v2`
+- connection URL: `ws://127.0.0.1:8765`
+- static transfer targets are defined in `config/web_bridge/bridge/bridge.json`
 
 ---
 

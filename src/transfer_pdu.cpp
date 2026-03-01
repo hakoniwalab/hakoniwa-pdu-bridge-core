@@ -109,7 +109,7 @@ void hakoniwa::pdu::bridge::TransferPdu::transfer() {
                   << "." << endpoint_pdu_key_.pdu << " from source: " << read_err << std::endl;
         return;
     }
-    if (received_size != pdu_size) {
+    if (received_size > pdu_size) {
          std::cerr << "WARNING: PDU " << endpoint_pdu_key_.robot 
                   << "." << endpoint_pdu_key_.pdu << " read " << received_size 
                   << " bytes, expected " << pdu_size << std::endl;
@@ -131,6 +131,12 @@ void hakoniwa::pdu::bridge::TransferPdu::transfer() {
             #endif
             return;
         }
+    }
+
+    bool destination_running = false;
+    HakoPduErrorType running_err = dst_endpoint_->is_running(destination_running);
+    if (running_err == HAKO_PDU_ERR_OK && !destination_running) {
+        return;
     }
 
     // Write to destination endpoint

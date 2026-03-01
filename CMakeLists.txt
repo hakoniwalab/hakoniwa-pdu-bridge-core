@@ -82,6 +82,7 @@ endif()
 file(GLOB_RECURSE PDU_BRIDGE_SOURCES "src/*.cpp")
 set(PDU_BRIDGE_LIB_SOURCES ${PDU_BRIDGE_SOURCES})
 list(REMOVE_ITEM PDU_BRIDGE_LIB_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/daemon.cpp")
+list(REMOVE_ITEM PDU_BRIDGE_LIB_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/web_bridge_daemon.cpp")
 
 # Create a library from the source files (excluding main)
 add_library(hakoniwa_pdu_bridge_lib ${PDU_BRIDGE_LIB_SOURCES})
@@ -93,6 +94,7 @@ target_include_directories(hakoniwa_pdu_bridge_lib
 
 # Add the executable
 add_executable(hakoniwa-pdu-bridge src/daemon.cpp)
+add_executable(hakoniwa-pdu-web-bridge src/web_bridge_daemon.cpp)
 add_executable(hakoniwa-pdu-bridge-monitor tools/bridge_monitor_cli.cpp)
 
 # Explicitly add the hakoniwa core include directory for this project
@@ -111,11 +113,20 @@ target_link_libraries(hakoniwa-pdu-bridge
   hakoniwa_pdu_bridge_lib
   shakoc
 )
+target_link_libraries(hakoniwa-pdu-web-bridge
+  PRIVATE
+  hakoniwa_pdu_bridge_lib
+  shakoc
+)
 target_link_libraries(hakoniwa-pdu-bridge-monitor
   PRIVATE
     hakoniwa_pdu_bridge_lib
 )
 target_link_directories(hakoniwa-pdu-bridge 
+  PRIVATE
+    /usr/local/hakoniwa/lib
+)
+target_link_directories(hakoniwa-pdu-web-bridge
   PRIVATE
     /usr/local/hakoniwa/lib
 )
@@ -143,6 +154,7 @@ install(TARGETS hakoniwa_pdu_bridge_lib
 )
 install(TARGETS
   hakoniwa-pdu-bridge
+  hakoniwa-pdu-web-bridge
   hakoniwa-pdu-bridge-monitor
   RUNTIME DESTINATION bin
 )

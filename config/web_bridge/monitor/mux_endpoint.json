@@ -1,0 +1,6 @@
+{
+  "name": "web-bridge-monitor-mux",
+  "pdu_def_path": "../pdu/drone-pdudef.json",
+  "cache": "../cache/latest.json",
+  "comm": "mux_comm_tcp_server_9200.json"
+}

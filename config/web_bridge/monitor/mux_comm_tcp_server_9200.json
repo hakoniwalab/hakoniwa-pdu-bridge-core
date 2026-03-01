@@ -1,0 +1,10 @@
+{
+  "protocol": "tcp",
+  "name": "web_bridge_monitor_mux_9200",
+  "direction": "inout",
+  "expected_clients": 1,
+  "local": {
+    "address": "0.0.0.0",
+    "port": 9200
+  }
+}
