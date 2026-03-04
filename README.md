@@ -296,6 +296,49 @@ Unity side:
 - connection URL: `ws://127.0.0.1:8765`
 - static transfer targets are defined in `config/web_bridge/bridge/bridge.json`
 
+### Web bridge fleets config
+
+`config/web_bridge_fleets/` is the fleet-oriented Web bridge config set for
+forwarding `DroneVisualStatePublisher` output from SHM to WebSocket.
+
+Intent:
+
+- use the SHM output produced by `DroneVisualStatePublisher`
+- forward `hako_msgs/DroneVisualStateArray` to a WebSocket endpoint
+- keep the bridge one-way (`SHM -> WebSocket`)
+
+Current assumptions:
+
+- robot name: `DroneVisualStatePublisher`
+- transfer target: `drone_visual_state_array_0`
+- SHM comm mode: `callback`
+- bridge policy: `ticker_20ms`
+
+Main files:
+
+- `config/web_bridge_fleets/bridge/bridge.json`
+- `config/web_bridge_fleets/endpoint/endpoint_container.json`
+- `config/web_bridge_fleets/endpoint/visual-state-shm.json`
+- `config/web_bridge_fleets/endpoint/visual-state-ws.json`
+- `config/web_bridge_fleets/pdu/drone-visual-state.json`
+
+This config set is intended for fleet visualization traffic and is separate from
+the legacy single-drone `config/web_bridge/` set.
+
+Example startup:
+
+```bash
+./tools/run-web-bridge.bash \
+  --config-root config/web_bridge_fleets \
+  --asset-name WebBridgeFleets \
+  --node-name web_bridge_fleets_node1 \
+  --delta-time-step-usec 20000
+```
+
+`tools/run-web-bridge.bash` forwards arguments directly to
+`hakoniwa-pdu-web-bridge`, so switching from `config/web_bridge/` to
+`config/web_bridge_fleets/` only requires replacing `--config-root`.
+
 ---
 
 ## Quickstart (1-minute, local)
