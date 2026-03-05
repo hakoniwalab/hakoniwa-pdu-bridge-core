@@ -1,0 +1,6 @@
+{
+  "name": "web-bridge-monitor-client",
+  "pdu_def_path": "../pdu/drone-pdudef.json",
+  "cache": "../cache/latest.json",
+  "comm": "client_comm_tcp_9200.json"
+}

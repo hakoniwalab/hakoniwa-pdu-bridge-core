@@ -1,29 +1,52 @@
 {
-  "transferPolicies": [
-    { "name": "ticker_20ms", "type": "ticker", "intervalUsec": 20000 }
-  ],
+  "version": "2.0.0",
+  "transferPolicies": {
+    "ticker_20ms": { "type": "ticker", "intervalMs": 20 }
+  },
   "nodes": [
     { "id": "web_bridge_fleets_node1" }
   ],
+  "endpoints_config_path": "../endpoint/endpoint_container.json",
   "endpoints": [
-    { "id": "visual-state-shm-ep", "nodeId": "web_bridge_fleets_node1" },
-    { "id": "visual-state-ws-ep", "nodeId": "web_bridge_fleets_node1" }
-  ],
-  "pduKeyGroups": [
     {
-      "name": "visual-state-array-single",
-      "keys": [
-        { "robotName": "DroneVisualStatePublisher", "pduName": "drone_visual_state_array_0", "channelId": 0 }
+      "nodeId": "web_bridge_fleets_node1",
+      "endpoints": [
+        {
+          "id": "bridge-shm-ep",
+          "mode": "local",
+          "config_path": "../endpoint/visual-state-shm.json",
+          "direction": "input"
+        },
+        {
+          "id": "bridge-ws-ep",
+          "mode": "local",
+          "config_path": "../endpoint/visual-state-ws.json",
+          "direction": "output"
+        }
       ]
     }
   ],
+  "wireLinks": [],
+  "pduKeyGroups": {
+    "visual_state_array_single": [
+      {
+        "id": "DroneVisualStatePublisher.drone_visual_state_array_0",
+        "robot_name": "DroneVisualStatePublisher",
+        "pdu_name": "drone_visual_state_array_0"
+      }
+    ]
+  },
   "connections": [
     {
-      "name": "conn_visual_state_shm_to_ws",
-      "from": "visual-state-shm-ep",
-      "to": "visual-state-ws-ep",
-      "policy": "ticker_20ms",
-      "pduKeyGroup": "visual-state-array-single"
+      "id": "conn_visual_state_shm_to_ws",
+      "nodeId": "web_bridge_fleets_node1",
+      "source": { "endpointId": "bridge-shm-ep" },
+      "destinations": [
+        { "endpointId": "bridge-ws-ep" }
+      ],
+      "transferPdus": [
+        { "pduKeyGroupId": "visual_state_array_single", "policyId": "ticker_20ms" }
+      ]
     }
   ]
 }

@@ -3,6 +3,7 @@
 #include "hakoniwa/pdu/endpoint_container.hpp"
 #include "hakoniwa/time_source/time_source_factory.hpp"
 #include "hako_asset.h"
+#include <algorithm>
 #include <atomic>
 #include <charconv>
 #include <cstring>
@@ -10,6 +11,7 @@
 #include <iostream>
 #include <memory>
 #include <signal.h>
+#include <vector>
 #include <string>
 #include <system_error>
 
@@ -46,9 +48,6 @@ std::shared_ptr<hakoniwa::pdu::bridge::BridgeMonitorRuntime> g_monitor_runtime;
 std::shared_ptr<hakoniwa::time_source::ITimeSource> g_bridge_time_source;
 std::shared_ptr<hakoniwa::time_source::ITimeSource> g_real_sleep_time_source;
 
-constexpr const char* kWebSocketEndpointId = "drone001-ws-ep";
-constexpr const char* kShmEndpointId = "drone001-shm-ep";
-
 void signal_handler(int signum)
 {
     if (signum == SIGINT) {
@@ -66,11 +65,52 @@ std::string make_config_rooted_path(const std::string& config_root_path, const s
     return (std::filesystem::path(config_root_path) / relative_path).lexically_normal().string();
 }
 
+std::string resolve_default_asset_config_path(const std::string& config_root_path)
+{
+    namespace fs = std::filesystem;
+    const fs::path pdu_dir = fs::path(config_root_path) / "pdu";
+    const std::vector<std::string> preferred = {
+        "drone-pdudef.json",
+        "drone-visual-state.json"
+    };
+
+    for (const auto& filename : preferred) {
+        const fs::path candidate = pdu_dir / filename;
+        if (fs::exists(candidate)) {
+            return candidate.lexically_normal().string();
+        }
+    }
+
+    if (fs::exists(pdu_dir) && fs::is_directory(pdu_dir)) {
+        std::vector<fs::path> candidates;
+        for (const auto& entry : fs::directory_iterator(pdu_dir)) {
+            if (!entry.is_regular_file()) {
+                continue;
+            }
+            const auto ext = entry.path().extension().string();
+            if (ext != ".json") {
+                continue;
+            }
+            const auto filename = entry.path().filename().string();
+            if (filename.find("pdutypes") != std::string::npos) {
+                continue;
+            }
+            candidates.push_back(entry.path());
+        }
+        std::sort(candidates.begin(), candidates.end());
+        if (!candidates.empty()) {
+            return candidates.front().lexically_normal().string();
+        }
+    }
+
+    return make_config_rooted_path(config_root_path, "pdu/drone-pdudef.json");
+}
+
 void apply_config_root(WebBridgeDaemonOptions& options)
 {
     options.bridge_config_path = make_config_rooted_path(options.config_root_path, "bridge/bridge.json");
     options.endpoint_container_path = make_config_rooted_path(options.config_root_path, "endpoint/endpoint_container.json");
-    options.asset_config_path = make_config_rooted_path(options.config_root_path, "pdu/drone-pdudef.json");
+    options.asset_config_path = resolve_default_asset_config_path(options.config_root_path);
     options.ondemand_mux_config_path = make_config_rooted_path(options.config_root_path, "monitor/mux_endpoint.json");
 }
 
@@ -205,20 +245,12 @@ int bridge_on_initialize(hako_asset_context_t*)
         return 1;
     }
 
-    if (g_endpoint_container->start(kWebSocketEndpointId) != HAKO_PDU_ERR_OK) {
-        log_error("failed to start websocket endpoint: " + g_endpoint_container->last_error());
+    if (g_endpoint_container->start_all() != HAKO_PDU_ERR_OK) {
+        log_error("failed to start endpoints: " + g_endpoint_container->last_error());
         return 1;
     }
-    if (g_endpoint_container->post_start(kWebSocketEndpointId) != HAKO_PDU_ERR_OK) {
-        log_error("failed to post-start websocket endpoint: " + g_endpoint_container->last_error());
-        return 1;
-    }
-    if (g_endpoint_container->start(kShmEndpointId) != HAKO_PDU_ERR_OK) {
-        log_error("failed to start shm endpoint: " + g_endpoint_container->last_error());
-        return 1;
-    }
-    if (g_endpoint_container->post_start(kShmEndpointId) != HAKO_PDU_ERR_OK) {
-        log_error("failed to post-start shm endpoint: " + g_endpoint_container->last_error());
+    if (g_endpoint_container->post_start_all() != HAKO_PDU_ERR_OK) {
+        log_error("failed to post-start endpoints: " + g_endpoint_container->last_error());
         return 1;
     }
 

@@ -13,13 +13,13 @@
       "nodeId": "web_bridge_node1",
       "endpoints": [
         {
-          "id": "drone001-shm-ep",
+          "id": "bridge-shm-ep",
           "mode": "local",
           "config_path": "../endpoint/drone001-shm.json",
           "direction": "inout"
         },
         {
-          "id": "drone001-ws-ep",
+          "id": "bridge-ws-ep",
           "mode": "local",
           "config_path": "../endpoint/drone001-ws.json",
           "direction": "inout"
@@ -59,9 +59,9 @@
     {
       "id": "conn_drone001_shm_to_ws",
       "nodeId": "web_bridge_node1",
-      "source": { "endpointId": "drone001-shm-ep" },
+      "source": { "endpointId": "bridge-shm-ep" },
       "destinations": [
-        { "endpointId": "drone001-ws-ep" }
+        { "endpointId": "bridge-ws-ep" }
       ],
       "transferPdus": [
         { "pduKeyGroupId": "drone001_ws_out_motion", "policyId": "ticker_20ms" },
@@ -72,9 +72,9 @@
     {
       "id": "conn_drone001_ws_to_shm",
       "nodeId": "web_bridge_node1",
-      "source": { "endpointId": "drone001-ws-ep" },
+      "source": { "endpointId": "bridge-ws-ep" },
       "destinations": [
-        { "endpointId": "drone001-shm-ep" }
+        { "endpointId": "bridge-shm-ep" }
       ],
       "transferPdus": [
         { "pduKeyGroupId": "drone001_ws_in_game_cmd", "policyId": "immediate" },

@@ -1,17 +1,16 @@
 {
-  "type": "shm",
-  "name": "visual-state-shm-callback",
-  "mode": "callback",
-  "robots": [
-    {
-      "name": "DroneVisualStatePublisher",
-      "shm_pdu_readers": [
-        {
-          "channel_id": 0,
-          "notify_on_recv": false
-        }
-      ],
-      "shm_pdu_writers": []
-    }
-  ]
+  "protocol": "shm",
+  "impl_type": "callback",
+  "name": "visual_state_shm_callback",
+  "direction": "inout",
+  "io": {
+    "robots": [
+      {
+        "name": "DroneVisualStatePublisher",
+        "pdu": [
+          { "name": "drone_visual_state_array_0", "notify_on_recv": false }
+        ]
+      }
+    ]
+  }
 }

@@ -3,13 +3,13 @@
     "nodeId": "web_bridge_node1",
     "endpoints": [
       {
-        "id": "drone001-shm-ep",
+        "id": "bridge-shm-ep",
         "mode": "local",
         "config_path": "drone001-shm.json",
         "direction": "inout"
       },
       {
-        "id": "drone001-ws-ep",
+        "id": "bridge-ws-ep",
         "mode": "local",
         "config_path": "drone001-ws.json",
         "direction": "inout"
