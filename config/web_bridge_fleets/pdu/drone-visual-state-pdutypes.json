@@ -1,7 +1,7 @@
 [
   {
     "channel_id": 0,
-    "pdu_size": 5120,
+    "pdu_size": 16384,
     "name": "drone_visual_state_array_0",
     "type": "hako_msgs/DroneVisualStateArray"
   }
