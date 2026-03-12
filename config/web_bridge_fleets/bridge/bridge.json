@@ -28,11 +28,16 @@
   ],
   "wireLinks": [],
   "pduKeyGroups": {
-    "visual_state_array_single": [
+    "visual_state_array_dual": [
       {
         "id": "DroneVisualStatePublisher.drone_visual_state_array_0",
         "robot_name": "DroneVisualStatePublisher",
         "pdu_name": "drone_visual_state_array_0"
+      },
+      {
+        "id": "DroneVisualStatePublisher.drone_visual_state_array_1",
+        "robot_name": "DroneVisualStatePublisher",
+        "pdu_name": "drone_visual_state_array_1"
       }
     ]
   },
@@ -45,7 +50,7 @@
         { "endpointId": "bridge-ws-ep" }
       ],
       "transferPdus": [
-        { "pduKeyGroupId": "visual_state_array_single", "policyId": "ticker_20ms" }
+        { "pduKeyGroupId": "visual_state_array_dual", "policyId": "ticker_20ms" }
       ]
     }
   ]
