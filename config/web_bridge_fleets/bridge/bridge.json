@@ -7,25 +7,6 @@
     { "id": "web_bridge_fleets_node1" }
   ],
   "endpoints_config_path": "../endpoint/endpoint_container.json",
-  "endpoints": [
-    {
-      "nodeId": "web_bridge_fleets_node1",
-      "endpoints": [
-        {
-          "id": "bridge-shm-ep",
-          "mode": "local",
-          "config_path": "../endpoint/visual-state-shm.json",
-          "direction": "input"
-        },
-        {
-          "id": "bridge-ws-ep",
-          "mode": "local",
-          "config_path": "../endpoint/visual-state-ws.json",
-          "direction": "output"
-        }
-      ]
-    }
-  ],
   "wireLinks": [],
   "pduKeyGroups": {
     "visual_state_array_dual": [

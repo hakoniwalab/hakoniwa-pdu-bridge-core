@@ -1,0 +1,6 @@
+{
+  "name": "drone-game-shm-ep",
+  "pdu_def_path": "../pdu/drone-pdudef.json",
+  "cache": "../cache/latest.json",
+  "comm": "../comm/drone-game-shm-callback.json"
+}

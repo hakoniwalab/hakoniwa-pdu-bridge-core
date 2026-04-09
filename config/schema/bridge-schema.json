@@ -41,13 +41,6 @@
       "description": "Optional path to endpoint_container.json used by hakoniwa-pdu-endpoint. Resolved relative to bridge.json."
     },
 
-    "endpoints": {
-      "type": "array",
-      "minItems": 1,
-      "items": { "$ref": "#/$defs/nodeEndpoints" },
-      "description": "Endpoint groups per node. Endpoint IDs should be globally unique across all nodes (recommended)."
-    },
-
     "wireLinks": {
       "type": "array",
       "minItems": 0,
@@ -89,41 +82,6 @@
       "required": ["id"],
       "properties": {
         "id": { "$ref": "#/$defs/id" }
-      }
-    },
-
-    "endpointMode": {
-      "type": "string",
-      "enum": ["local", "wire"]
-    },
-
-    "endpoint": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["id", "mode", "config_path", "direction"],
-      "properties": {
-        "id": { "$ref": "#/$defs/id" },
-        "mode": { "$ref": "#/$defs/endpointMode" },
-        "config_path": { "type": "string", "minLength": 1, "description": "Path to the endpoint's JSON configuration file." },
-        "direction": {
-          "type": "string",
-          "enum": ["in", "out", "inout"],
-          "description": "Direction of the endpoint."
-        }
-      }
-    },
-
-    "nodeEndpoints": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["nodeId", "endpoints"],
-      "properties": {
-        "nodeId": { "$ref": "#/$defs/id" },
-        "endpoints": {
-          "type": "array",
-          "minItems": 1,
-          "items": { "$ref": "#/$defs/endpoint" }
-        }
       }
     },
 
@@ -197,7 +155,7 @@
       "properties": {
         "endpointId": { "$ref": "#/$defs/id" }
       },
-      "description": "Reference to an endpoint by ID. Must exist in endpoints[].endpoints[].id (enforced by additional validation outside JSON Schema if needed)."
+      "description": "Reference to an endpoint by ID. Must exist in endpoint_container.json for the selected node (enforced by the loader / auxiliary validation)."
     },
 
     "transferPdu": {
@@ -230,7 +188,7 @@
           "items": { "$ref": "#/$defs/transferPdu" }
         }
       },
-      "description": "nodeId must exist in nodes. source/destinations must belong to nodeId's endpoints (recommended invariant; can be validated by a loader)."
+      "description": "nodeId must exist in nodes. source/destinations should resolve to endpoint_container.json entries for that node."
     }
   }
 }

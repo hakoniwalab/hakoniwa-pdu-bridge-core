@@ -161,6 +161,7 @@ install(TARGETS
 install(DIRECTORY include/ DESTINATION include)
 install(DIRECTORY config/web_bridge/ DESTINATION share/hakoniwa-pdu-bridge/config/web_bridge)
 install(DIRECTORY config/web_bridge_fleets/ DESTINATION share/hakoniwa-pdu-bridge/config/web_bridge_fleets)
+install(DIRECTORY config/web_bridge_game/ DESTINATION share/hakoniwa-pdu-bridge/config/web_bridge_game)
 install(PROGRAMS tools/run-web-bridge.bash DESTINATION bin)
 
 configure_package_config_file(

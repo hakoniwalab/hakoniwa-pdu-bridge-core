@@ -13,8 +13,8 @@ The bridge daemon runs as:
 ```
 
 Notes:
-- `endpoints` and `wireLinks` are accepted by the schema but ignored by the current implementation.
-- `config_path` values are resolved relative to the `bridge.json` location.
+- `wireLinks` is part of the bridge schema but is typically `[]` in the local tutorials.
+- endpoint implementation files are resolved via `endpoint_container.json`, not `bridge.json`.
 - The bridge daemon uses an endpoint container; the writer/reader examples open endpoint configs directly.
 - The tutorial configs use TCP loopback (`127.0.0.1`) on ports `9000` and `9100`.
 

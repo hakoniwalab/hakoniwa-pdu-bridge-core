@@ -1,0 +1,3 @@
+[
+  { "channel_id": 9, "pdu_size": 136, "name": "hako_cmd_game", "type": "hako_msgs/GameControllerOperation" }
+]

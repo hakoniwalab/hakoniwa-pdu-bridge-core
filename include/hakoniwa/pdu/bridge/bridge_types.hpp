@@ -26,19 +26,6 @@ struct Node {
     std::string id;
 };
 
-// from endpoints
-struct EndpointDefinition {
-    std::string id;
-    std::string mode;
-    std::string config_path;
-    std::string direction;
-};
-
-struct NodeEndpoints {
-    std::string nodeId;
-    std::vector<EndpointDefinition> endpoints;
-};
-
 // from wireLinks
 struct WireLink {
     std::string from;
@@ -153,16 +140,6 @@ inline void from_json(const nlohmann::json& j, TransferPolicy& p) {
 }
 inline void from_json(const nlohmann::json& j, Node& n) {
     j.at("id").get_to(n.id);
-}
-inline void from_json(const nlohmann::json& j, EndpointDefinition& e) {
-    j.at("id").get_to(e.id);
-    j.at("mode").get_to(e.mode);
-    j.at("config_path").get_to(e.config_path);
-    j.at("direction").get_to(e.direction);
-}
-inline void from_json(const nlohmann::json& j, NodeEndpoints& n) {
-    j.at("nodeId").get_to(n.nodeId);
-    j.at("endpoints").get_to(n.endpoints);
 }
 inline void from_json(const nlohmann::json& j, WireLink& w) {
     j.at("from").get_to(w.from);

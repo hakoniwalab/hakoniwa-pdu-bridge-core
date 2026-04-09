@@ -17,15 +17,7 @@ Use `config/tutorials/bridge-ticker.json`:
   "nodes": [
     { "id": "node1" }
   ],
-  "endpoints": [
-    {
-      "nodeId": "node1",
-      "endpoints": [
-        { "id": "n1-epSrc", "mode": "local", "config_path": "endpoint/bridge-src.json", "direction": "in" },
-        { "id": "n1-epDst", "mode": "local", "config_path": "endpoint/bridge-dst.json", "direction": "out" }
-      ]
-    }
-  ],
+  "endpoints_config_path": "endpoint_container.json",
   "wireLinks": [],
   "pduKeyGroups": {
     "pdu_group1": [

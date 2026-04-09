@@ -1,0 +1,29 @@
+{
+  "version": "2.0.0",
+  "transferPolicies": {
+    "immediate": { "type": "immediate" }
+  },
+  "nodes": [
+    { "id": "web_bridge_game_node1" }
+  ],
+  "endpoints_config_path": "../endpoint/endpoint_container.json",
+  "wireLinks": [],
+  "pduKeyGroups": {
+    "drone_game_cmd": [
+      { "id": "Drone.hako_cmd_game", "robot_name": "Drone", "pdu_name": "hako_cmd_game" }
+    ]
+  },
+  "connections": [
+    {
+      "id": "conn_drone_game_ws_to_shm",
+      "nodeId": "web_bridge_game_node1",
+      "source": { "endpointId": "bridge-ws-ep" },
+      "destinations": [
+        { "endpointId": "bridge-shm-ep" }
+      ],
+      "transferPdus": [
+        { "pduKeyGroupId": "drone_game_cmd", "policyId": "immediate" }
+      ]
+    }
+  ]
+}

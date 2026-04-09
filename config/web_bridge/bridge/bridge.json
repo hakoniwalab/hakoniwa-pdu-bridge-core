@@ -8,25 +8,6 @@
     { "id": "web_bridge_node1" }
   ],
   "endpoints_config_path": "../endpoint/endpoint_container.json",
-  "endpoints": [
-    {
-      "nodeId": "web_bridge_node1",
-      "endpoints": [
-        {
-          "id": "bridge-shm-ep",
-          "mode": "local",
-          "config_path": "../endpoint/drone001-shm.json",
-          "direction": "inout"
-        },
-        {
-          "id": "bridge-ws-ep",
-          "mode": "local",
-          "config_path": "../endpoint/drone001-ws.json",
-          "direction": "inout"
-        }
-      ]
-    }
-  ],
   "wireLinks": [],
   "pduKeyGroups": {
     "drone001_ws_out_motion": [

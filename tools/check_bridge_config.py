@@ -34,22 +34,6 @@ def validate_schema(instance, schema_path: Path) -> bool:
         return False
 
 
-def check_bridge_paths(bridge_path: Path, config: dict) -> bool:
-    ok = True
-    base_dir = bridge_path.parent
-    endpoints = config.get("endpoints", [])
-    for node in endpoints:
-        for ep in node.get("endpoints", []):
-            config_path = ep.get("config_path")
-            if not config_path:
-                continue
-            resolved = (base_dir / config_path).resolve()
-            if not resolved.is_file():
-                print(f"ERROR: endpoint config_path not found: {config_path} (resolved: {resolved})")
-                ok = False
-    return ok
-
-
 def check_endpoint_container_paths(container_path: Path) -> bool:
     ok = True
     base_dir = container_path.parent
@@ -95,9 +79,6 @@ def main() -> int:
 
     ok = True
     if not validate_schema(bridge_data, args.schema):
-        ok = False
-
-    if not check_bridge_paths(args.bridge_json, bridge_data):
         ok = False
 
     endpoint_container_path = args.endpoint_container

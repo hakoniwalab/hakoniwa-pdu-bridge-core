@@ -1,0 +1,19 @@
+[
+  {
+    "nodeId": "web_bridge_game_node1",
+    "endpoints": [
+      {
+        "id": "bridge-ws-ep",
+        "mode": "local",
+        "config_path": "drone-game-ws.json",
+        "direction": "in"
+      },
+      {
+        "id": "bridge-shm-ep",
+        "mode": "local",
+        "config_path": "drone-game-shm.json",
+        "direction": "out"
+      }
+    ]
+  }
+]

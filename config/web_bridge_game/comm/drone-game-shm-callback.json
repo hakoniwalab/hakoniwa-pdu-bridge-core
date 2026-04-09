@@ -1,0 +1,16 @@
+{
+  "protocol": "shm",
+  "impl_type": "callback",
+  "name": "drone_game_shm_callback",
+  "direction": "inout",
+  "io": {
+    "robots": [
+      {
+        "name": "Drone",
+        "pdu": [
+          { "name": "hako_cmd_game", "notify_on_recv": false }
+        ]
+      }
+    ]
+  }
+}

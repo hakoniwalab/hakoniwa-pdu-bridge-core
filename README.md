@@ -339,6 +339,50 @@ Example startup:
 `hakoniwa-pdu-web-bridge`, so switching from `config/web_bridge/` to
 `config/web_bridge_fleets/` only requires replacing `--config-root`.
 
+### Web bridge game command config
+
+`config/web_bridge_game/` is the minimal Web bridge config set for forwarding
+only `Drone.hako_cmd_game` from WebSocket to SHM.
+
+Intent:
+
+- receive `hako_cmd_game` on the WebSocket server endpoint
+- reflect it to the SHM callback endpoint immediately
+- avoid unrelated PDU wiring
+
+Main files:
+
+- `config/web_bridge_game/bridge/bridge.json`
+- `config/web_bridge_game/endpoint/endpoint_container.json`
+- `config/web_bridge_game/endpoint/drone-game-ws.json`
+- `config/web_bridge_game/endpoint/drone-game-shm.json`
+- `config/web_bridge_game/pdu/drone-pdudef.json`
+
+Example startup:
+
+```bash
+./tools/run-web-bridge.bash \
+  --config-root config/web_bridge_game \
+  --asset-name WebBridgeGame \
+  --node-name web_bridge_game_node1 \
+  --delta-time-step-usec 20000
+```
+
+Validation:
+
+```bash
+python3 tools/check_bridge_config.py \
+  config/web_bridge_game/bridge/bridge.json \
+  --endpoint-container config/web_bridge_game/endpoint/endpoint_container.json
+```
+
+Runtime behavior:
+
+- WebSocket server listens on `ws://127.0.0.1:8765`
+- only `Drone.hako_cmd_game` is transferred
+- direction is `WebSocket -> SHM`
+- transfer policy is `immediate`
+
 ---
 
 ## Quickstart (1-minute, local)
@@ -494,7 +538,7 @@ python3 tools/check_bridge_config.py path/to/bridge.json --endpoint-container pa
 
 Notes:
 - Schema validation requires the `jsonschema` Python package.
-- Path checks ensure `config_path` entries exist on disk (resolved relative to each JSON file).
+- Path checks ensure `endpoints_config_path` and endpoint container `config_path` entries exist on disk.
 
 ---
 
@@ -526,7 +570,7 @@ Constraints:
 - `immediate` must not specify `intervalMs`
 
 Notes:
-- `endpoints` / `wireLinks` are accepted by the schema but are not used by the current implementation.
+- `wireLinks` is reserved for wire endpoint topology; keep it as `[]` unless that topology is needed.
 - `endpoints_config_path` is optional and points to an endpoint container JSON file (used by `tools/check_bridge_config.py`).
 
 ### Schema validation

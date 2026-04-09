@@ -6,13 +6,13 @@
         "id": "bridge-shm-ep",
         "mode": "local",
         "config_path": "visual-state-shm.json",
-        "direction": "input"
+        "direction": "in"
       },
       {
         "id": "bridge-ws-ep",
         "mode": "local",
         "config_path": "visual-state-ws.json",
-        "direction": "output"
+        "direction": "out"
       }
     ]
   }

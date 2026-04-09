@@ -5,15 +5,6 @@
     "nodes": [
       { "id": "node1" }
     ],
-    "endpoints": [
-      {
-        "nodeId": "node1",
-        "endpoints": [
-          { "id": "ep1", "mode": "local", "config_path": "dummy_endpoint.json", "direction": "out" },
-          { "id": "ep2", "mode": "local", "config_path": "dummy_endpoint.json", "direction": "in" }
-        ]
-      }
-    ],
     "connections": [
       {
         "id": "conn1",
