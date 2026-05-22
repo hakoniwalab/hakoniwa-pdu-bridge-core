@@ -1,0 +1,8 @@
+[
+  {
+    "channel_id": 3,
+    "pdu_size": 256,
+    "name": "disturb",
+    "type": "hako_msgs/Disturbance"
+  }
+]

@@ -1,0 +1,6 @@
+{
+  "name": "disturb-ws-ep",
+  "pdu_def_path": "../pdu/drone-disturb-visual-state.json",
+  "cache": "../cache/latest.json",
+  "comm": "../comm/disturb-websocket-server.json"
+}

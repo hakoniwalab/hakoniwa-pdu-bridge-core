@@ -1,0 +1,19 @@
+[
+  {
+    "nodeId": "web_bridge_disturb_node1",
+    "endpoints": [
+      {
+        "id": "bridge-shm-ep",
+        "mode": "local",
+        "config_path": "disturb-shm.json",
+        "direction": "inout"
+      },
+      {
+        "id": "bridge-ws-ep",
+        "mode": "local",
+        "config_path": "disturb-ws.json",
+        "direction": "inout"
+      }
+    ]
+  }
+]

@@ -1,0 +1,22 @@
+{
+  "protocol": "shm",
+  "impl_type": "callback",
+  "name": "disturb_shm_callback",
+  "direction": "inout",
+  "io": {
+    "robots": [
+      {
+        "name": "Drone",
+        "pdu": [
+          { "name": "disturb", "notify_on_recv": false }
+        ]
+      },
+      {
+        "name": "DroneVisualStatePublisher",
+        "pdu": [
+          { "name": "drone_visual_state_array_0", "notify_on_recv": false }
+        ]
+      }
+    ]
+  }
+}

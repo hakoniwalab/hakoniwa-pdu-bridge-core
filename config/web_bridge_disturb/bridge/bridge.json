@@ -1,0 +1,52 @@
+{
+  "version": "2.0.0",
+  "transferPolicies": {
+    "immediate": { "type": "immediate" },
+    "ticker_20ms": { "type": "ticker", "intervalMs": 20 }
+  },
+  "nodes": [
+    { "id": "web_bridge_disturb_node1" }
+  ],
+  "endpoints_config_path": "../endpoint/endpoint_container.json",
+  "wireLinks": [],
+  "pduKeyGroups": {
+    "visual_state_array_single": [
+      {
+        "id": "DroneVisualStatePublisher.drone_visual_state_array_0",
+        "robot_name": "DroneVisualStatePublisher",
+        "pdu_name": "drone_visual_state_array_0"
+      }
+    ],
+    "drone_disturb": [
+      {
+        "id": "Drone.disturb",
+        "robot_name": "Drone",
+        "pdu_name": "disturb"
+      }
+    ]
+  },
+  "connections": [
+    {
+      "id": "conn_visual_state_shm_to_ws",
+      "nodeId": "web_bridge_disturb_node1",
+      "source": { "endpointId": "bridge-shm-ep" },
+      "destinations": [
+        { "endpointId": "bridge-ws-ep" }
+      ],
+      "transferPdus": [
+        { "pduKeyGroupId": "visual_state_array_single", "policyId": "ticker_20ms" }
+      ]
+    },
+    {
+      "id": "conn_disturb_ws_to_shm",
+      "nodeId": "web_bridge_disturb_node1",
+      "source": { "endpointId": "bridge-ws-ep" },
+      "destinations": [
+        { "endpointId": "bridge-shm-ep" }
+      ],
+      "transferPdus": [
+        { "pduKeyGroupId": "drone_disturb", "policyId": "immediate" }
+      ]
+    }
+  ]
+}
