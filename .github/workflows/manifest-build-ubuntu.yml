@@ -22,6 +22,12 @@ jobs:
           repository: hakoniwalab/hakoniwa-pdu-endpoint
           path: pdu-endpoint
 
+      - name: Checkout pdu-registry
+        uses: actions/checkout@v4
+        with:
+          repository: hakoniwalab/hakoniwa-pdu-registry
+          path: pdu-registry
+
       - name: Install build prerequisites
         run: |
           sudo apt-get update
@@ -96,18 +102,26 @@ jobs:
 
       - name: Doctor bridge
         working-directory: bridge
+        env:
+          HAKO_PDU_REGISTRY_ROOT: ${{ github.workspace }}/pdu-registry
         run: python3 tools/hako.py doctor --config ci-build.yaml
 
       - name: Configure bridge
         working-directory: bridge
+        env:
+          HAKO_PDU_REGISTRY_ROOT: ${{ github.workspace }}/pdu-registry
         run: python3 tools/hako.py configure --config ci-build.yaml
 
       - name: Build bridge
         working-directory: bridge
+        env:
+          HAKO_PDU_REGISTRY_ROOT: ${{ github.workspace }}/pdu-registry
         run: python3 tools/hako.py build --config ci-build.yaml
 
       - name: Test bridge
         working-directory: bridge
+        env:
+          HAKO_PDU_REGISTRY_ROOT: ${{ github.workspace }}/pdu-registry
         run: python3 tools/hako.py test --config ci-build.yaml
 
       - name: Upload resolved build diagnostics
