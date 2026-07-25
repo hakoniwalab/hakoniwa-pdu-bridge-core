@@ -30,6 +30,12 @@ set(HAKO_PDU_ENDPOINT_PREFIX "/usr/local/hakoniwa" CACHE PATH
     "Install prefix of hakoniwa-pdu-endpoint")
 set(HAKO_PDU_BRIDGE_HAKONIWA_CORE_ROOT "${HAKO_PDU_ENDPOINT_PREFIX}" CACHE PATH
     "Install prefix of Hakoniwa Core used by Hakoniwa-integrated applications")
+set(HAKO_PDU_REGISTRY_ROOT "" CACHE PATH
+    "Source checkout of hakoniwa-pdu-registry used by Bridge tests")
+if(HAKO_PDU_REGISTRY_ROOT STREQUAL "" AND DEFINED ENV{HAKO_PDU_REGISTRY_ROOT})
+  set(HAKO_PDU_REGISTRY_ROOT "$ENV{HAKO_PDU_REGISTRY_ROOT}" CACHE PATH
+      "Source checkout of hakoniwa-pdu-registry used by Bridge tests" FORCE)
+endif()
 
 # Prefer the installed Endpoint CMake package. This preserves public usage
 # requirements such as HAKO_PDU_ENDPOINT_DISABLE_HAKONIWA_CORE and transitive
