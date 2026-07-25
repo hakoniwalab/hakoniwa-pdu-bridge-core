@@ -1,0 +1,138 @@
+name: Manifest Build (Windows)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  manifest-build:
+    runs-on: windows-2025
+
+    steps:
+      - name: Checkout bridge
+        uses: actions/checkout@v4
+        with:
+          path: bridge
+
+      - name: Checkout pdu-endpoint
+        uses: actions/checkout@v4
+        with:
+          repository: hakoniwalab/hakoniwa-pdu-endpoint
+          path: pdu-endpoint
+
+      - name: Checkout pdu-registry
+        uses: actions/checkout@v4
+        with:
+          repository: hakoniwalab/hakoniwa-pdu-registry
+          path: pdu-registry
+
+      - name: Install vcpkg dependencies
+        shell: pwsh
+        run: |
+          & "$env:VCPKG_INSTALLATION_ROOT\vcpkg.exe" install boost-asio:x64-windows gtest:x64-windows
+
+      - name: Prepare endpoint CI manifest
+        working-directory: pdu-endpoint
+        shell: pwsh
+        run: |
+          @'
+          version: 1
+          build:
+            type: Release
+            dir: build-ci
+            shared: false
+            parallel: 2
+          bindings:
+            python: false
+          features:
+            hakoniwa_core: false
+            zenoh: false
+            mqtt: false
+          validation:
+            tests: false
+            examples: false
+            tools: false
+            benchmarks: false
+            python_import: false
+          paths:
+            hakoniwa_core_root: ""
+            vcpkg_root: ""
+          '@ | Set-Content -Encoding utf8 ci-build.yaml
+
+      - name: Doctor endpoint
+        working-directory: pdu-endpoint
+        run: python tools/hako.py doctor --config ci-build.yaml
+
+      - name: Build endpoint
+        working-directory: pdu-endpoint
+        run: python tools/hako.py build --config ci-build.yaml
+
+      - name: Install endpoint
+        working-directory: pdu-endpoint
+        shell: pwsh
+        env:
+          ENDPOINT_PREFIX: ${{ runner.temp }}\hakoniwa-pdu-endpoint
+        run: cmake --install build-ci --config Release --prefix "$env:ENDPOINT_PREFIX"
+
+      - name: Prepare bridge CI manifest
+        working-directory: bridge
+        shell: pwsh
+        env:
+          ENDPOINT_PREFIX: ${{ runner.temp }}\hakoniwa-pdu-endpoint
+        run: |
+          @"
+          version: 1
+          build:
+            type: Release
+            dir: build-ci
+            parallel: 2
+          components:
+            library: true
+            standalone_app: true
+            hakoniwa_app: false
+            monitor: true
+          validation:
+            tests: true
+            examples: false
+            integration_tcp: false
+          paths:
+            pdu_endpoint_root: "$env:ENDPOINT_PREFIX"
+            hakoniwa_core_root: ""
+            vcpkg_root: ""
+          "@ | Set-Content -Encoding utf8 ci-build.yaml
+
+      - name: Doctor bridge
+        working-directory: bridge
+        env:
+          HAKO_PDU_REGISTRY_ROOT: ${{ github.workspace }}\pdu-registry
+        run: python tools/hako.py doctor --config ci-build.yaml
+
+      - name: Configure bridge
+        working-directory: bridge
+        env:
+          HAKO_PDU_REGISTRY_ROOT: ${{ github.workspace }}\pdu-registry
+        run: python tools/hako.py configure --config ci-build.yaml
+
+      - name: Build bridge
+        working-directory: bridge
+        env:
+          HAKO_PDU_REGISTRY_ROOT: ${{ github.workspace }}\pdu-registry
+        run: python tools/hako.py build --config ci-build.yaml
+
+      - name: Test bridge baseline
+        working-directory: bridge
+        env:
+          HAKO_PDU_REGISTRY_ROOT: ${{ github.workspace }}\pdu-registry
+        run: python tools/hako.py test --config ci-build.yaml
+
+      - name: Upload resolved build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resolved-build-windows
+          path: |
+            pdu-endpoint/.hako/
+            bridge/.hako/
+          if-no-files-found: ignore
