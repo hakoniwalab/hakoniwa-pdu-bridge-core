@@ -1,0 +1,25 @@
+# User-facing build intent for hakoniwa-pdu-bridge-core.
+# See docs/build-architecture.md for the resolution model.
+version: 1
+
+build:
+  type: Release
+  dir: build
+  parallel: 0
+
+components:
+  library: true
+  standalone_app: true
+  hakoniwa_app: false
+  monitor: true
+
+validation:
+  tests: true
+  examples: false
+  integration_tcp: false
+
+# Empty strings mean auto-detect from the environment/default locations.
+paths:
+  pdu_endpoint_root: ""
+  hakoniwa_core_root: ""
+  vcpkg_root: ""
