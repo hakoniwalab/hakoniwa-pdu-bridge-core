@@ -1,4 +1,4 @@
-name: Manifest Build (Ubuntu)
+name: Manifest Build (macOS)
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   manifest-build:
-    runs-on: ubuntu-24.04
+    runs-on: macos-15
 
     steps:
       - name: Checkout bridge
@@ -29,9 +29,7 @@ jobs:
           path: pdu-registry
 
       - name: Install build prerequisites
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake g++ libboost-dev libgtest-dev
+        run: brew install cmake boost googletest
 
       - name: Prepare endpoint CI manifest
         working-directory: pdu-endpoint
@@ -134,7 +132,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: resolved-build-ubuntu
+          name: resolved-build-macos
           path: |
             pdu-endpoint/.hako/
             bridge/.hako/

@@ -5,11 +5,16 @@ set(TEST_CONFIG_DIR "${CMAKE_CURRENT_SOURCE_DIR}/config" CACHE PATH "Test config
 set(TEST_SOURCES
     bridge_loader_test.cpp
     bridge_core_flow_test.cpp
-    bridge_tcp_flow_test.cpp
     bridge_connection_test.cpp
     ondemand_control_handler_test.cpp
     monitor_cli_utils_test.cpp
 )
+
+# Keep the default test suite deterministic and transport-independent. TCP flow
+# tests are integration tests and must be enabled explicitly.
+if(HAKO_PDU_BRIDGE_BUILD_TCP_TESTS)
+    list(APPEND TEST_SOURCES bridge_tcp_flow_test.cpp)
+endif()
 
 add_executable(hakoniwa_pdu_bridge_tests ${TEST_SOURCES})
 

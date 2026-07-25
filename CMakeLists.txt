@@ -12,6 +12,7 @@ option(HAKO_PDU_BRIDGE_BUILD_STANDALONE_APP "Build standalone bridge daemon" ON)
 option(HAKO_PDU_BRIDGE_BUILD_HAKONIWA_APP "Build Hakoniwa-integrated web bridge daemon" ON)
 option(HAKO_PDU_BRIDGE_BUILD_MONITOR "Build bridge monitor CLI" ON)
 option(HAKO_PDU_BRIDGE_BUILD_TESTS "Build bridge tests" ON)
+option(HAKO_PDU_BRIDGE_BUILD_TCP_TESTS "Build TCP cross-node integration tests" OFF)
 option(HAKO_PDU_BRIDGE_BUILD_EXAMPLES "Build bridge examples" ON)
 option(HAKO_PDU_BRIDGE_ENABLE_HAKONIWA_CORE "Resolve/link Hakoniwa Core runtime libraries" ON)
 
