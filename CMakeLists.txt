@@ -6,6 +6,15 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(CMakePackageConfigHelpers)
 
+# Keep legacy direct-CMake behavior by default. The manifest-driven flow passes
+# these options explicitly so its result does not depend on historical defaults.
+option(HAKO_PDU_BRIDGE_BUILD_STANDALONE_APP "Build standalone bridge daemon" ON)
+option(HAKO_PDU_BRIDGE_BUILD_HAKONIWA_APP "Build Hakoniwa-integrated web bridge daemon" ON)
+option(HAKO_PDU_BRIDGE_BUILD_MONITOR "Build bridge monitor CLI" ON)
+option(HAKO_PDU_BRIDGE_BUILD_TESTS "Build bridge tests" ON)
+option(HAKO_PDU_BRIDGE_BUILD_EXAMPLES "Build bridge examples" ON)
+option(HAKO_PDU_BRIDGE_ENABLE_HAKONIWA_CORE "Resolve/link Hakoniwa Core runtime libraries" ON)
+
 # Bridge public headers
 include_directories(include)
 
@@ -19,6 +28,9 @@ FetchContent_MakeAvailable(nlohmann_json)
 
 set(HAKO_PDU_ENDPOINT_PREFIX "/usr/local/hakoniwa" CACHE PATH
     "Install prefix of hakoniwa-pdu-endpoint")
+set(HAKO_PDU_BRIDGE_HAKONIWA_CORE_ROOT "${HAKO_PDU_ENDPOINT_PREFIX}" CACHE PATH
+    "Install prefix of Hakoniwa Core used by Hakoniwa-integrated applications")
+
 find_path(HAKO_PDU_ENDPOINT_INCLUDE_DIR
   NAMES hakoniwa/pdu/endpoint.hpp
   HINTS
@@ -30,42 +42,57 @@ find_library(HAKO_PDU_ENDPOINT_LIBRARY
   NAMES hakoniwa_pdu_endpoint
   HINTS
     "${HAKO_PDU_ENDPOINT_PREFIX}/lib"
+    "${HAKO_PDU_ENDPOINT_PREFIX}/bin"
     "/usr/local/lib"
     "/usr/local/hakoniwa/lib"
-)
-find_library(HAKO_ASSETS_LIBRARY
-  NAMES assets
-  HINTS
-    "${HAKO_PDU_ENDPOINT_PREFIX}/lib"
-    "/usr/local/hakoniwa/lib"
-    "/usr/local/lib"
-)
-find_library(HAKO_SHAKOC_LIBRARY
-  NAMES shakoc
-  HINTS
-    "${HAKO_PDU_ENDPOINT_PREFIX}/lib"
-    "/usr/local/hakoniwa/lib"
-    "/usr/local/lib"
 )
 
 if(NOT HAKO_PDU_ENDPOINT_INCLUDE_DIR)
-  message(FATAL_ERROR "hakoniwa-pdu-endpoint header not found. Set HAKO_PDU_ENDPOINT_INCLUDE_DIR.")
+  message(FATAL_ERROR "hakoniwa-pdu-endpoint header not found. Set HAKO_PDU_ENDPOINT_INCLUDE_DIR or HAKO_PDU_ENDPOINT_PREFIX.")
 endif()
 if(NOT HAKO_PDU_ENDPOINT_LIBRARY)
-  message(FATAL_ERROR "hakoniwa-pdu-endpoint library not found. Set HAKO_PDU_ENDPOINT_LIBRARY.")
+  message(FATAL_ERROR "hakoniwa-pdu-endpoint library not found. Set HAKO_PDU_ENDPOINT_LIBRARY or HAKO_PDU_ENDPOINT_PREFIX.")
 endif()
 
-set(HAKO_ENDPOINT_EXTRA_LIBS "")
-list(APPEND HAKO_ENDPOINT_EXTRA_LIBS nlohmann_json::nlohmann_json)
-if(HAKO_ASSETS_LIBRARY)
-  list(APPEND HAKO_ENDPOINT_EXTRA_LIBS "${HAKO_ASSETS_LIBRARY}")
-else()
-  list(APPEND HAKO_ENDPOINT_EXTRA_LIBS assets)
+set(HAKO_ENDPOINT_EXTRA_LIBS nlohmann_json::nlohmann_json)
+set(HAKO_PDU_BRIDGE_CORE_LIBS "")
+
+if(HAKO_PDU_BRIDGE_ENABLE_HAKONIWA_CORE)
+  find_library(HAKO_ASSETS_LIBRARY
+    NAMES assets
+    HINTS
+      "${HAKO_PDU_BRIDGE_HAKONIWA_CORE_ROOT}/lib"
+      "${HAKO_PDU_BRIDGE_HAKONIWA_CORE_ROOT}/bin"
+      "/usr/local/hakoniwa/lib"
+      "/usr/local/lib"
+  )
+  find_library(HAKO_SHAKOC_LIBRARY
+    NAMES shakoc
+    HINTS
+      "${HAKO_PDU_BRIDGE_HAKONIWA_CORE_ROOT}/lib"
+      "${HAKO_PDU_BRIDGE_HAKONIWA_CORE_ROOT}/bin"
+      "/usr/local/hakoniwa/lib"
+      "/usr/local/lib"
+  )
+
+  if(HAKO_ASSETS_LIBRARY)
+    list(APPEND HAKO_ENDPOINT_EXTRA_LIBS "${HAKO_ASSETS_LIBRARY}")
+    list(APPEND HAKO_PDU_BRIDGE_CORE_LIBS "${HAKO_ASSETS_LIBRARY}")
+  else()
+    list(APPEND HAKO_ENDPOINT_EXTRA_LIBS assets)
+    list(APPEND HAKO_PDU_BRIDGE_CORE_LIBS assets)
+  endif()
+  if(HAKO_SHAKOC_LIBRARY)
+    list(APPEND HAKO_ENDPOINT_EXTRA_LIBS "${HAKO_SHAKOC_LIBRARY}")
+    list(APPEND HAKO_PDU_BRIDGE_CORE_LIBS "${HAKO_SHAKOC_LIBRARY}")
+  else()
+    list(APPEND HAKO_ENDPOINT_EXTRA_LIBS shakoc)
+    list(APPEND HAKO_PDU_BRIDGE_CORE_LIBS shakoc)
+  endif()
 endif()
-if(HAKO_SHAKOC_LIBRARY)
-  list(APPEND HAKO_ENDPOINT_EXTRA_LIBS "${HAKO_SHAKOC_LIBRARY}")
-else()
-  list(APPEND HAKO_ENDPOINT_EXTRA_LIBS shakoc)
+
+if(HAKO_PDU_BRIDGE_BUILD_HAKONIWA_APP AND NOT HAKO_PDU_BRIDGE_ENABLE_HAKONIWA_CORE)
+  message(FATAL_ERROR "HAKO_PDU_BRIDGE_BUILD_HAKONIWA_APP=ON requires HAKO_PDU_BRIDGE_ENABLE_HAKONIWA_CORE=ON")
 endif()
 
 if(NOT TARGET hakoniwa_pdu_endpoint)
@@ -84,63 +111,65 @@ set(PDU_BRIDGE_LIB_SOURCES ${PDU_BRIDGE_SOURCES})
 list(REMOVE_ITEM PDU_BRIDGE_LIB_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/daemon.cpp")
 list(REMOVE_ITEM PDU_BRIDGE_LIB_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/web_bridge_daemon.cpp")
 
-# Create a library from the source files (excluding main)
+# Bridge Core library. Its primary runtime dependency is hakoniwa-pdu-endpoint.
 add_library(hakoniwa_pdu_bridge_lib ${PDU_BRIDGE_LIB_SOURCES})
 target_include_directories(hakoniwa_pdu_bridge_lib
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
+target_link_libraries(hakoniwa_pdu_bridge_lib PUBLIC hakoniwa_pdu_endpoint)
 
-# Add the executable
-add_executable(hakoniwa-pdu-bridge src/daemon.cpp)
-add_executable(hakoniwa-pdu-web-bridge src/web_bridge_daemon.cpp)
-add_executable(hakoniwa-pdu-bridge-monitor tools/bridge_monitor_cli.cpp)
-
-# Explicitly add the hakoniwa core include directory for this project
-if(APPLE)
+# Preserve the historical Apple include search only for Core-enabled builds.
+if(APPLE AND HAKO_PDU_BRIDGE_ENABLE_HAKONIWA_CORE)
   target_include_directories(hakoniwa_pdu_bridge_lib
     PRIVATE
-      /usr/local/hakoniwa/include/hakoniwa
+      "${HAKO_PDU_BRIDGE_HAKONIWA_CORE_ROOT}/include/hakoniwa"
   )
 endif()
 
-target_link_libraries(hakoniwa_pdu_bridge_lib PUBLIC hakoniwa_pdu_endpoint)
+if(HAKO_PDU_BRIDGE_BUILD_STANDALONE_APP)
+  add_executable(hakoniwa-pdu-bridge src/daemon.cpp)
+  target_link_libraries(hakoniwa-pdu-bridge PRIVATE hakoniwa_pdu_bridge_lib)
+endif()
 
-# Link our bridge executable against the created library
-target_link_libraries(hakoniwa-pdu-bridge 
-  PRIVATE 
-  hakoniwa_pdu_bridge_lib
-  shakoc
-)
-target_link_libraries(hakoniwa-pdu-web-bridge
-  PRIVATE
-  hakoniwa_pdu_bridge_lib
-  shakoc
-)
-target_link_libraries(hakoniwa-pdu-bridge-monitor
-  PRIVATE
-    hakoniwa_pdu_bridge_lib
-)
-target_link_directories(hakoniwa-pdu-bridge 
-  PRIVATE
-    /usr/local/hakoniwa/lib
-)
-target_link_directories(hakoniwa-pdu-web-bridge
-  PRIVATE
-    /usr/local/hakoniwa/lib
-)
-target_link_directories(hakoniwa-pdu-bridge-monitor
-  PRIVATE
-    /usr/local/hakoniwa/lib
-)
-# Enable testing
-enable_testing()
+if(HAKO_PDU_BRIDGE_BUILD_HAKONIWA_APP)
+  add_executable(hakoniwa-pdu-web-bridge src/web_bridge_daemon.cpp)
+  target_include_directories(hakoniwa-pdu-web-bridge PRIVATE
+    "${HAKO_PDU_BRIDGE_HAKONIWA_CORE_ROOT}/include"
+    "${HAKO_PDU_BRIDGE_HAKONIWA_CORE_ROOT}/include/hakoniwa"
+  )
+  target_link_libraries(hakoniwa-pdu-web-bridge
+    PRIVATE
+      hakoniwa_pdu_bridge_lib
+      ${HAKO_PDU_BRIDGE_CORE_LIBS}
+  )
+endif()
 
-# Add our test subdirectory
-add_subdirectory(test)
+if(HAKO_PDU_BRIDGE_BUILD_MONITOR)
+  add_executable(hakoniwa-pdu-bridge-monitor tools/bridge_monitor_cli.cpp)
+  target_link_libraries(hakoniwa-pdu-bridge-monitor PRIVATE hakoniwa_pdu_bridge_lib)
+endif()
 
-option(HAKO_PDU_BRIDGE_BUILD_EXAMPLES "Build bridge examples" ON)
+# Legacy install prefixes remain valid for direct CMake users. New manifest builds
+# resolve concrete dependency roots and pass them explicitly.
+if(HAKO_PDU_BRIDGE_ENABLE_HAKONIWA_CORE)
+  if(TARGET hakoniwa-pdu-bridge)
+    target_link_directories(hakoniwa-pdu-bridge PRIVATE "${HAKO_PDU_BRIDGE_HAKONIWA_CORE_ROOT}/lib")
+  endif()
+  if(TARGET hakoniwa-pdu-web-bridge)
+    target_link_directories(hakoniwa-pdu-web-bridge PRIVATE "${HAKO_PDU_BRIDGE_HAKONIWA_CORE_ROOT}/lib")
+  endif()
+  if(TARGET hakoniwa-pdu-bridge-monitor)
+    target_link_directories(hakoniwa-pdu-bridge-monitor PRIVATE "${HAKO_PDU_BRIDGE_HAKONIWA_CORE_ROOT}/lib")
+  endif()
+endif()
+
+if(HAKO_PDU_BRIDGE_BUILD_TESTS)
+  enable_testing()
+  add_subdirectory(test)
+endif()
+
 if(HAKO_PDU_BRIDGE_BUILD_EXAMPLES)
   add_subdirectory(examples)
 endif()
@@ -152,12 +181,15 @@ install(TARGETS hakoniwa_pdu_bridge_lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
 )
-install(TARGETS
-  hakoniwa-pdu-bridge
-  hakoniwa-pdu-web-bridge
-  hakoniwa-pdu-bridge-monitor
-  RUNTIME DESTINATION bin
-)
+if(TARGET hakoniwa-pdu-bridge)
+  install(TARGETS hakoniwa-pdu-bridge RUNTIME DESTINATION bin)
+endif()
+if(TARGET hakoniwa-pdu-web-bridge)
+  install(TARGETS hakoniwa-pdu-web-bridge RUNTIME DESTINATION bin)
+endif()
+if(TARGET hakoniwa-pdu-bridge-monitor)
+  install(TARGETS hakoniwa-pdu-bridge-monitor RUNTIME DESTINATION bin)
+endif()
 install(DIRECTORY include/ DESTINATION include)
 install(DIRECTORY config/web_bridge/ DESTINATION share/hakoniwa-pdu-bridge/config/web_bridge)
 install(DIRECTORY config/web_bridge_fleets/ DESTINATION share/hakoniwa-pdu-bridge/config/web_bridge_fleets)
