@@ -112,6 +112,12 @@ jobs:
           HAKO_PDU_REGISTRY_ROOT: ${{ github.workspace }}/pdu-registry
         run: python3 tools/hako.py configure --config ci-build.yaml
 
+      - name: Enable TCP integration tests
+        working-directory: bridge
+        env:
+          HAKO_PDU_REGISTRY_ROOT: ${{ github.workspace }}/pdu-registry
+        run: cmake -S . -B build-ci -DHAKO_PDU_BRIDGE_BUILD_TCP_TESTS=ON
+
       - name: Build bridge
         working-directory: bridge
         env:
