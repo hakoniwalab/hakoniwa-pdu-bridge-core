@@ -30,32 +30,59 @@ set(HAKO_PDU_ENDPOINT_PREFIX "/usr/local/hakoniwa" CACHE PATH
     "Install prefix of hakoniwa-pdu-endpoint")
 set(HAKO_PDU_BRIDGE_HAKONIWA_CORE_ROOT "${HAKO_PDU_ENDPOINT_PREFIX}" CACHE PATH
     "Install prefix of Hakoniwa Core used by Hakoniwa-integrated applications")
-
-find_path(HAKO_PDU_ENDPOINT_INCLUDE_DIR
-  NAMES hakoniwa/pdu/endpoint.hpp
-  HINTS
-    "${HAKO_PDU_ENDPOINT_PREFIX}/include"
-    "/usr/local/include"
-    "/usr/local/hakoniwa/include"
-)
-find_library(HAKO_PDU_ENDPOINT_LIBRARY
-  NAMES hakoniwa_pdu_endpoint
-  HINTS
-    "${HAKO_PDU_ENDPOINT_PREFIX}/lib"
-    "${HAKO_PDU_ENDPOINT_PREFIX}/bin"
-    "/usr/local/lib"
-    "/usr/local/hakoniwa/lib"
-)
-
-if(NOT HAKO_PDU_ENDPOINT_INCLUDE_DIR)
-  message(FATAL_ERROR "hakoniwa-pdu-endpoint header not found. Set HAKO_PDU_ENDPOINT_INCLUDE_DIR or HAKO_PDU_ENDPOINT_PREFIX.")
+set(HAKO_PDU_REGISTRY_ROOT "" CACHE PATH
+    "Source checkout of hakoniwa-pdu-registry used by Bridge tests")
+if(HAKO_PDU_REGISTRY_ROOT STREQUAL "" AND DEFINED ENV{HAKO_PDU_REGISTRY_ROOT})
+  set(HAKO_PDU_REGISTRY_ROOT "$ENV{HAKO_PDU_REGISTRY_ROOT}" CACHE PATH
+      "Source checkout of hakoniwa-pdu-registry used by Bridge tests" FORCE)
 endif()
-if(NOT HAKO_PDU_ENDPOINT_LIBRARY)
-  message(FATAL_ERROR "hakoniwa-pdu-endpoint library not found. Set HAKO_PDU_ENDPOINT_LIBRARY or HAKO_PDU_ENDPOINT_PREFIX.")
+
+# Prefer the installed Endpoint CMake package. This preserves public usage
+# requirements such as HAKO_PDU_ENDPOINT_DISABLE_HAKONIWA_CORE and transitive
+# include/link requirements. Fall back to legacy header/library discovery for
+# older Endpoint installations that do not provide a package config.
+find_package(hakoniwa_pdu_endpoint CONFIG QUIET
+  HINTS
+    "${HAKO_PDU_ENDPOINT_PREFIX}"
+    "${HAKO_PDU_ENDPOINT_PREFIX}/lib/cmake/hakoniwa_pdu_endpoint"
+)
+
+set(HAKO_USING_ENDPOINT_PACKAGE OFF)
+if(TARGET hakoniwa_pdu_endpoint::hakoniwa_pdu_endpoint)
+  set(HAKO_USING_ENDPOINT_PACKAGE ON)
+  if(NOT TARGET hakoniwa_pdu_endpoint)
+    add_library(hakoniwa_pdu_endpoint ALIAS hakoniwa_pdu_endpoint::hakoniwa_pdu_endpoint)
+  endif()
+  message(STATUS "Using installed hakoniwa-pdu-endpoint CMake package from ${HAKO_PDU_ENDPOINT_PREFIX}")
 endif()
 
 set(HAKO_ENDPOINT_EXTRA_LIBS nlohmann_json::nlohmann_json)
 set(HAKO_PDU_BRIDGE_CORE_LIBS "")
+
+if(NOT HAKO_USING_ENDPOINT_PACKAGE)
+  find_path(HAKO_PDU_ENDPOINT_INCLUDE_DIR
+    NAMES hakoniwa/pdu/endpoint.hpp
+    HINTS
+      "${HAKO_PDU_ENDPOINT_PREFIX}/include"
+      "/usr/local/include"
+      "/usr/local/hakoniwa/include"
+  )
+  find_library(HAKO_PDU_ENDPOINT_LIBRARY
+    NAMES hakoniwa_pdu_endpoint
+    HINTS
+      "${HAKO_PDU_ENDPOINT_PREFIX}/lib"
+      "${HAKO_PDU_ENDPOINT_PREFIX}/bin"
+      "/usr/local/lib"
+      "/usr/local/hakoniwa/lib"
+  )
+
+  if(NOT HAKO_PDU_ENDPOINT_INCLUDE_DIR)
+    message(FATAL_ERROR "hakoniwa-pdu-endpoint header not found. Set HAKO_PDU_ENDPOINT_INCLUDE_DIR or HAKO_PDU_ENDPOINT_PREFIX.")
+  endif()
+  if(NOT HAKO_PDU_ENDPOINT_LIBRARY)
+    message(FATAL_ERROR "hakoniwa-pdu-endpoint library not found. Set HAKO_PDU_ENDPOINT_LIBRARY or HAKO_PDU_ENDPOINT_PREFIX.")
+  endif()
+endif()
 
 if(HAKO_PDU_BRIDGE_ENABLE_HAKONIWA_CORE)
   find_library(HAKO_ASSETS_LIBRARY
