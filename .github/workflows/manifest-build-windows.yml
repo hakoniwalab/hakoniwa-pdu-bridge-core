@@ -31,7 +31,7 @@ jobs:
       - name: Install vcpkg dependencies
         shell: pwsh
         run: |
-          & "$env:VCPKG_INSTALLATION_ROOT\vcpkg.exe" install boost-beast:x64-windows gtest:x64-windows
+          & "$env:VCPKG_INSTALLATION_ROOT\vcpkg.exe" install boost-asio:x64-windows boost-beast:x64-windows gtest:x64-windows
 
       - name: Prepare endpoint CI manifest
         working-directory: pdu-endpoint
