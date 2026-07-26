@@ -39,7 +39,8 @@ jobs:
 
       - name: Build and install Core-enabled Endpoint callback package
         run: |
-          git clone --quiet https://github.com/hakoniwalab/hakoniwa-pdu-endpoint.git endpoint
+          git clone --quiet --branch agent/fix-linux-exported-core-include \
+            https://github.com/hakoniwalab/hakoniwa-pdu-endpoint.git endpoint
           cmake -S endpoint -B endpoint/build-core \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX="${GITHUB_WORKSPACE}/endpoint-core-install" \
