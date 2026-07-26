@@ -19,6 +19,7 @@ concurrency:
 jobs:
   linux-package-contract:
     strategy:
+      fail-fast: false
       matrix:
         runner:
           - ubuntu-latest
@@ -122,6 +123,16 @@ jobs:
             -DHAKO_PDU_BRIDGE_BUILD_TESTS=OFF \
             -DHAKO_PDU_BRIDGE_BUILD_EXAMPLES=OFF
           cmake --build build-hakoniwa --config Release --target hakoniwa-pdu-web-bridge
+
+      - name: Dump Linux Hakoniwa Bridge link diagnostics
+        if: failure()
+        run: |
+          echo "runner=${{ matrix.runner }}"
+          uname -a
+          echo "--- link.txt files ---"
+          find build-hakoniwa -name link.txt -print -exec sh -c 'echo "--- $1"; cat "$1"' _ {} \; || true
+          echo "--- verbose rebuild ---"
+          cmake --build build-hakoniwa --config Release --target hakoniwa-pdu-web-bridge --verbose || true
 
   macos-package-contract:
     runs-on: macos-15
