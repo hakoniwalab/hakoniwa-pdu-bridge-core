@@ -98,7 +98,7 @@ jobs:
             examples: false
             integration_tcp: false
           paths:
-            pdu_endpoint_root: "$env:ENDPOINT_PREFIX"
+            pdu_endpoint_root: '$env:ENDPOINT_PREFIX'
             hakoniwa_core_root: ""
             vcpkg_root: ""
           "@ | Set-Content -Encoding utf8 ci-build.yaml
