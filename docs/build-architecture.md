@@ -2,89 +2,9 @@
 
 ## Purpose
 
-`hakoniwa-pdu-bridge-core` should support a build flow that is consistent across Linux, macOS, and Windows without requiring users to understand repository-specific CMake flags, shell scripts, or platform-specific dependency layouts.
+`hakoniwa-pdu-bridge-core` uses a manifest-driven build flow so users can select Bridge capabilities without having to know repository-specific CMake flags or platform-specific dependency layouts.
 
-The build architecture follows the same direction as `hakoniwa-pdu-endpoint`:
-
-1. **intent manifest** — the user states which bridge capabilities and applications they want;
-2. **doctor/configure/build tool** — resolves dependencies and translates that intent into the current platform's CMake/toolchain configuration.
-
-The intended user-facing source of truth is `hakoniwa-build.yaml`.
-
-This document also clarifies a dependency boundary that is currently blurred in the CMake configuration: the **Bridge Core library** should remain independent from Hakoniwa Core itself. Hakoniwa Core dependencies belong only to applications/features that actually integrate with Hakoniwa runtime APIs.
-
-## Target component model
-
-The repository should be treated as three layers rather than one monolithic build target.
-
-```text
-hakoniwa-pdu-bridge-core
-|
-+-- Bridge Core library
-|    +-- dependency: hakoniwa-pdu-endpoint
-|
-+-- standalone bridge application
-|    +-- dependency: Bridge Core library
-|    +-- real-time execution loop
-|    +-- no Hakoniwa Core requirement
-|
-+-- Hakoniwa-integrated bridge application
-     +-- dependency: Bridge Core library
-     +-- Hakoniwa callback/runtime integration
-     +-- requires Hakoniwa Core
-```
-
-The Bridge Core library owns transfer logic such as routing, policy evaluation, and cyclic triggering. Transport I/O remains delegated to `hakoniwa-pdu-endpoint`.
-
-The standalone application provides an executable loop around the library for configurations such as TCP-to-TCP bridging.
-
-Hakoniwa-integrated applications add runtime integration such as callback assets, SHM access, or Hakoniwa-specific time sources. Those requirements must not become unconditional dependencies of the Bridge Core library.
-
-## Current dependency mismatch
-
-The current CMake configuration does not fully reflect the intended boundary.
-
-Today:
-
-- `hakoniwa_pdu_bridge_lib` links to `hakoniwa_pdu_endpoint`;
-- the imported endpoint target is augmented with `assets` and `shakoc`;
-- `hakoniwa-pdu-bridge` and `hakoniwa-pdu-web-bridge` also link `shakoc` directly;
-- `/usr/local/hakoniwa` is embedded in several discovery and link paths.
-
-This makes Hakoniwa Core-related libraries effectively part of builds that should only require the endpoint layer.
-
-The manifest-driven build work should therefore be used to make the dependency graph explicit rather than simply adding Windows-specific build scripts.
-
-## Design principles
-
-### 1. The Bridge Core library has one primary external runtime dependency
-
-The default Bridge Core build should require:
-
-- C++20 toolchain;
-- CMake;
-- `hakoniwa-pdu-endpoint`;
-- header-only/build-time dependencies such as `nlohmann_json` as required by the implementation.
-
-Hakoniwa Core is not a default Bridge Core dependency.
-
-### 2. Applications are optional capabilities
-
-Executable applications should be selected independently from the library build.
-
-A minimal build can produce only the library.
-
-A common standalone build can produce the library plus the standalone bridge executable.
-
-Hakoniwa-integrated applications are opt-in and pull in Hakoniwa Core only when selected.
-
-### 3. The manifest describes intent, not CMake syntax
-
-Users should select capabilities such as `standalone_app` or `hakoniwa_app`. They should not need to know implementation switches or platform-specific library names.
-
-### 4. OS-specific behavior stays below the resolver
-
-The normal workflow should be identical on all supported platforms:
+The user-facing source of truth is `hakoniwa-build.yaml`.
 
 ```text
 hakoniwa-build.yaml
@@ -102,38 +22,94 @@ python tools/hako.py build
 python tools/hako.py test
 ```
 
-The platform layer handles compiler discovery, library naming, runtime paths, and toolchain details.
+The same logical build model is used on Linux, macOS, and Windows. Platform-specific compiler, dependency, and toolchain handling stays below the resolver.
 
-Examples:
+## Current component model
 
-- Windows: MSVC/vswhere, optional vcpkg toolchain, DLL search directories;
-- macOS: AppleClang and dylib discovery;
-- Linux: GCC/Clang and shared-object discovery.
-
-The logical build model should not change by OS.
-
-### 5. Existing direct CMake use remains available
-
-The configurator is an orchestration layer, not a replacement for CMake.
-
-Existing maintainer/developer workflows may remain available while the manifest path becomes the recommended user-facing flow.
-
-### 6. Resolution is observable
-
-As with `hakoniwa-pdu-endpoint`, the resolver should write diagnostic artifacts such as:
+The repository has three architectural layers.
 
 ```text
-.hako/resolved-build.yaml
-.hako/cmake-args.txt
+hakoniwa-pdu-bridge-core
+|
++-- Bridge Core library
+|    +-- dependency: hakoniwa-pdu-endpoint base package target
+|
++-- standalone bridge / monitor
+|    +-- dependency: Bridge Core library
+|    +-- no Hakoniwa Core requirement
+|
++-- Hakoniwa-integrated web bridge
+     +-- internal callback Bridge variant
+     +-- dependency: hakoniwa-pdu-endpoint::core_callback
+     +-- dependency: Hakoniwa Core callback/assets runtime
 ```
 
-These files should make selected applications, dependency paths, platform details, and generated CMake options visible.
+The Bridge Core library owns logical transfer behavior such as routing, transfer-policy evaluation, atomic groups, and cyclic triggering. Transport I/O is delegated to `hakoniwa-pdu-endpoint`.
+
+Hakoniwa Core is not an unconditional Bridge dependency. It is pulled in only for applications that explicitly integrate with the Hakoniwa runtime.
+
+## Installed CMake package contract
+
+The preferred installed target is:
+
+```cmake
+find_package(hakoniwa_pdu_bridge CONFIG REQUIRED)
+
+target_link_libraries(my_app
+  PRIVATE
+    hakoniwa_pdu_bridge::bridge
+)
+```
+
+For compatibility with existing consumers, the package also exposes:
+
+```text
+hakoniwa_pdu_bridge::hakoniwa_pdu_bridge_lib
+```
+
+The compatibility target is intentionally retained for consumers such as `hakoniwa-conductor-pro`.
+
+The installed Bridge package resolves `hakoniwa-pdu-endpoint` through its CMake package contract rather than reconstructing Endpoint include/library paths manually.
+
+## Endpoint dependency boundary
+
+### Core-free Bridge consumers
+
+The public Bridge package uses the base Endpoint target:
+
+```text
+hakoniwa_pdu_bridge::bridge
+        |
+        v
+hakoniwa_pdu_endpoint::hakoniwa_pdu_endpoint
+```
+
+This path is intended for normal library, standalone bridge, monitor, TCP, UDP, WebSocket, storage, and other non-Hakoniwa-Core uses.
+
+### Hakoniwa callback integration
+
+The Hakoniwa-integrated web bridge uses an internal callback Bridge target:
+
+```text
+hakoniwa-pdu-web-bridge
+        |
+        v
+hakoniwa_pdu_bridge_core_callback
+        |
+        v
+hakoniwa_pdu_endpoint::core_callback
+        |
+        v
+hakoniwa-core::assets
+```
+
+The internal callback Bridge target is not exported as the public package contract. This prevents the public Bridge library from inheriting Hakoniwa Core dependencies.
+
+The polling/shakoc frontend remains a separate concern. `hakoniwa-conductor-pro`, for example, keeps its own polling/shakoc dependency and consumes the Bridge package independently.
 
 ## Manifest v1
 
-The initial manifest should deliberately remain small.
-
-Example:
+The default manifest is deliberately small.
 
 ```yaml
 version: 1
@@ -152,7 +128,7 @@ components:
 validation:
   tests: true
   examples: false
-  integration_tcp: true
+  integration_tcp: false
 
 paths:
   pdu_endpoint_root: ""
@@ -162,31 +138,23 @@ paths:
 
 ### `components.library`
 
-Builds the Bridge Core library.
-
-This is the base component and requires `hakoniwa-pdu-endpoint`.
+Builds the Bridge Core library. It requires `hakoniwa-pdu-endpoint`, but not Hakoniwa Core.
 
 ### `components.standalone_app`
 
-Builds the standalone bridge executable using the Bridge Core library and a normal real-time execution loop.
-
-This component must not require Hakoniwa Core merely because it is built in this repository.
+Builds the standalone bridge executable around the Bridge Core library and a normal real-time execution loop. It does not require Hakoniwa Core.
 
 ### `components.hakoniwa_app`
 
-Builds applications that integrate with Hakoniwa runtime facilities.
-
-Selecting this component enables Hakoniwa Core dependency resolution.
-
-The first implementation may map this capability to the existing web/callback bridge application, but the manifest name should describe the architectural capability rather than a historical executable name.
+Builds the Hakoniwa-integrated web bridge. Selecting this capability enables Hakoniwa Core dependency resolution and uses the Endpoint callback variant.
 
 ### `components.monitor`
 
-Builds the monitor CLI independently from Hakoniwa Core unless the monitor implementation itself requires a Hakoniwa-specific feature.
+Builds the monitor CLI. The monitor remains Core-free unless a future monitor capability explicitly requires Hakoniwa runtime integration.
 
 ## Dependency resolution
 
-The resolver should derive requirements from selected components.
+The resolver derives dependencies from selected capabilities.
 
 ```text
 library
@@ -199,147 +167,69 @@ monitor
   -> library
 
 hakoniwa_app
-  -> library
+  -> internal callback Bridge variant
+  -> hakoniwa-pdu-endpoint::core_callback
   -> Hakoniwa Core
 ```
 
-The resolver should reject internally inconsistent selections before CMake runs.
+The resolver rejects inconsistent selections before invoking CMake.
 
-For example, if an application requires a disabled base component, the resolver may either enable the base component automatically or fail with a precise diagnostic. The chosen rule should be deterministic and documented.
+## Doctor and observability
 
-## Doctor
+`doctor` performs prerequisite checks relevant to the selected manifest only.
 
-`doctor` is the preflight entry point.
-
-It should inspect the manifest and report only prerequisites relevant to the requested build.
-
-Example for a standalone TCP configuration:
+Resolution artifacts are written under `.hako/`:
 
 ```text
-[OK] Python
-[OK] CMake >= 3.16
-[OK] C++20 compiler
-[OK] hakoniwa-pdu-endpoint
-[SKIP] Hakoniwa Core (not requested)
-[SKIP] vcpkg (not required by resolved configuration)
+.hako/resolved-build.yaml
+.hako/cmake-args.txt
 ```
 
-Example for a Hakoniwa-integrated build:
+These files expose the resolved component selection, dependency roots, platform details, and generated CMake arguments.
 
-```text
-[OK] Python
-[OK] CMake >= 3.16
-[OK] C++20 compiler
-[OK] hakoniwa-pdu-endpoint
-[OK] Hakoniwa Core
-[OK] assets
-[OK] shakoc
-```
+## Direct CMake compatibility
 
-On Windows, diagnostics should identify concrete missing prerequisites rather than surfacing a later linker error.
+The manifest tool is an orchestration layer, not a replacement for CMake. Direct CMake use remains supported for maintainers and advanced integrations.
 
-Example:
+The recommended consumer boundary, however, is the installed CMake package contract rather than manually reconstructing include and library paths.
 
-```text
-[OK] Visual Studio / MSVC
-[OK] CMake
-[NG] hakoniwa-pdu-endpoint library not found
-     searched: ...
-     configure paths.pdu_endpoint_root or install the endpoint package first
-```
+## Platform model
 
-`doctor` should also validate the manifest itself and detect impossible or unsupported combinations before configuration.
+The logical build architecture is OS-neutral.
 
-## Configure
+- Linux: GCC/Clang, native x64 and ARM64 package-consumer validation.
+- macOS: AppleClang and native CMake package resolution.
+- Windows: MSVC/vswhere and optional vcpkg dependency resolution.
 
-`configure` resolves the manifest into a deterministic build model and translates it into CMake arguments.
+Hakoniwa Core remains static-first on Windows. The Bridge build must not require converting Core libraries back to DLLs.
 
-Responsibilities include:
+## CI responsibilities
 
-- detect the host platform and compiler;
-- resolve `hakoniwa-pdu-endpoint` headers and library;
-- resolve Hakoniwa Core only when requested;
-- resolve optional Windows toolchain/runtime directories;
-- explicitly enable or disable repository build targets;
-- write `.hako/resolved-build.yaml`;
-- write `.hako/cmake-args.txt`;
-- invoke CMake unless `--dry-run` is selected.
+Two CI layers validate different contracts.
 
-The resolved configuration should be explicit enough that direct CMake defaults cannot silently change the requested build.
+### Manifest Build
 
-## Validation model
+The Manifest Build workflows validate the user-facing `tools/hako.py` flow with a Core-free Endpoint/Bridge configuration on Ubuntu, macOS, and Windows.
 
-The first cross-platform acceptance target should deliberately avoid Hakoniwa Core.
+### Package Contract
 
-```text
-hakoniwa-build.yaml
-  -> doctor
-  -> configure
-  -> build Bridge Core library
-  -> build standalone bridge application
-  -> run TCP-to-TCP integration test
-```
+The Package Contract workflow validates installed-package composition:
 
-This path should be supported on:
+1. build and install a Core-free Endpoint package;
+2. build and install the Bridge package;
+3. build external consumers using both the preferred and compatibility Bridge target names;
+4. build and install Hakoniwa Core PRO;
+5. build and install Core-enabled Endpoint variants;
+6. build the Hakoniwa-integrated Bridge using `core_callback`.
 
-- Linux;
-- macOS;
-- Windows.
+This downstream-consumer validation is intentional. It catches exported CMake contract defects that may not appear when each repository is built only in isolation.
 
-A successful standalone TCP path establishes the Windows baseline without coupling the first milestone to Hakoniwa Core portability.
+## Design principles
 
-Hakoniwa-integrated validation can be added as a separate capability matrix after the core path is stable.
-
-## Windows strategy
-
-Windows support should be a consequence of the architecture, not a parallel collection of PowerShell-only build logic.
-
-The first Windows milestone is:
-
-1. discover MSVC reliably;
-2. discover an installed/built `hakoniwa-pdu-endpoint`;
-3. build the Bridge Core library;
-4. build the standalone bridge application;
-5. run a TCP integration smoke test.
-
-Hakoniwa Core, SHM, callback assets, and web bridge integration are later feature milestones unless they are already independently available on Windows.
-
-## Migration strategy
-
-### Phase 1: architecture and dependency cleanup
-
-- add this architecture document;
-- define the manifest schema;
-- introduce `tools/hako.py doctor`;
-- introduce `tools/hako.py configure --dry-run`;
-- separate Bridge Core dependency requirements from Hakoniwa-integrated applications;
-- keep existing build scripts/CMake entry points working.
-
-### Phase 2: manifest-driven build
-
-- add `hakoniwa-build.yaml`;
-- generate explicit CMake target/feature selections;
-- add `build` and `test` commands;
-- add standalone TCP integration validation;
-- validate Linux/macOS/Windows through the same logical flow.
-
-### Phase 3: CI and optional application coverage
-
-- migrate CI jobs to the manifest flow;
-- add Hakoniwa Core-enabled application validation;
-- reduce duplicated platform logic in shell/PowerShell scripts;
-- add executable capability-matrix tests.
-
-## Maintainer rule
-
-When a new bridge application, transport-facing integration, or Hakoniwa runtime feature is added:
-
-1. decide which component/capability owns the dependency;
-2. do not add the dependency unconditionally to the Bridge Core library;
-3. add the dependency rule to the resolver;
-4. expose the resolved decision in `.hako/resolved-build.yaml`;
-5. add a smoke/integration test for the new capability combination.
-
-The key invariant is:
-
-> The Bridge Core library is transport-orchestration logic built on `hakoniwa-pdu-endpoint`; Hakoniwa Core integration is an optional application/runtime capability, not an implicit property of the library.
+1. **Bridge Core stays Core-free.** Hakoniwa Core belongs only to integrations that use Hakoniwa runtime APIs.
+2. **The manifest describes intent.** Users choose capabilities, not platform-specific CMake flags.
+3. **Installed packages are the composition boundary.** Cross-repository integrations should consume exported CMake targets.
+4. **Callback and polling frontends remain explicit.** New Hakoniwa callback integrations use the Endpoint callback variant rather than an all-in dependency graph.
+5. **Windows remains static-first for Hakoniwa Core.** Cross-platform support must not reintroduce DLL handling as a prerequisite.
+6. **Resolution is observable.** `.hako/` artifacts make generated build decisions inspectable.
+7. **External consumer tests are part of the architecture contract.** A package is not considered complete merely because its own repository builds successfully.
