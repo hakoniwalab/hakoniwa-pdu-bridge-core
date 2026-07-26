@@ -1,171 +1,251 @@
 # hakoniwa-pdu-bridge
 
-`hakoniwa-pdu-bridge` is a logical transfer component that focuses on **controlling the timing of data flow** between PDU (Protocol Data Unit) channels.
+[![Manifest Build (Ubuntu)](https://github.com/hakoniwalab/hakoniwa-pdu-bridge-core/actions/workflows/manifest-build-ubuntu.yml/badge.svg)](https://github.com/hakoniwalab/hakoniwa-pdu-bridge-core/actions/workflows/manifest-build-ubuntu.yml)
+[![Manifest Build (macOS)](https://github.com/hakoniwalab/hakoniwa-pdu-bridge-core/actions/workflows/manifest-build-macos.yml/badge.svg)](https://github.com/hakoniwalab/hakoniwa-pdu-bridge-core/actions/workflows/manifest-build-macos.yml)
+[![Manifest Build (Windows)](https://github.com/hakoniwalab/hakoniwa-pdu-bridge-core/actions/workflows/manifest-build-windows.yml/badge.svg)](https://github.com/hakoniwalab/hakoniwa-pdu-bridge-core/actions/workflows/manifest-build-windows.yml)
+[![Package Contract](https://github.com/hakoniwalab/hakoniwa-pdu-bridge-core/actions/workflows/package-contract.yml/badge.svg)](https://github.com/hakoniwalab/hakoniwa-pdu-bridge-core/actions/workflows/package-contract.yml)
 
-The core design is to **separate the decision of when to transfer** from **how to communicate** (TCP/UDP/SHM, etc.). This bridge only decides when to transfer and delegates actual I/O to `hakoniwa-pdu-endpoint`.
+`hakoniwa-pdu-bridge` is a logical transfer component for controlling **when PDU data flows** between channels.
 
----
+The bridge separates transfer policy from transport implementation:
 
-## What this is / isn't
+- Bridge decides **when** data moves.
+- `hakoniwa-pdu-endpoint` decides **how** data moves over TCP, UDP, WebSocket, SHM, storage, and other endpoint types.
+- The caller supplies the time source and execution loop used by transfer policies.
 
-**This is:**
-- A transfer layer that declares logical PDU flows
-- A definition of which PDUs flow where, under which transfer policy model
-- On-demand monitoring for runtime checks (`health`, `connections`, `list_pdus`, `tail`)
-
-**This is NOT:**
-- A transport implementation (TCP/UDP/WebSocket/Zenoh/SHM, etc.)
-- Delivery guarantees, retries, or persistent queues
-- An endpoint JSON loader (handled by `hakoniwa-pdu-endpoint`)
-
-On-demand runtime introspection is available via monitor CLI:
-- `cmake-build/hakoniwa-pdu-bridge-monitor ...`
-- Tutorial: `docs/tutorials/monitor.md`
-
----
+This repository provides a Core-free Bridge library and standalone runtime, plus an optional Hakoniwa callback integration.
 
 ## Architecture
 
-### Main components
+```text
+Bridge Core library
+  -> hakoniwa-pdu-endpoint
+  -> no Hakoniwa Core requirement
 
-- **BridgeDaemon**: entry point that builds and runs `BridgeCore`.
-- **BridgeCore**: holds `BridgeConnection`s and drives `cyclic_trigger()`.
-- **BridgeConnection**: binds a source to destinations and holds `TransferPdu`.
-- **TransferPdu / TransferAtomicPduGroup**: transfers a single PDU or an atomic PDU group.
-- **Policy**: `immediate` / `throttle` / `ticker` transfer policies.
-- **TimeSource (injected)**: `ITimeSource` provided by the caller.
-- **EndpointContainer**: endpoint creation and management (`hakoniwa-pdu-endpoint`).
+Standalone bridge / monitor
+  -> Bridge Core library
+  -> no Hakoniwa Core requirement
 
-### Data flow (high level)
+Hakoniwa-integrated web bridge
+  -> internal callback Bridge variant
+  -> hakoniwa_pdu_endpoint::core_callback
+  -> Hakoniwa Core callback/assets runtime
+```
 
-1. `BridgeDaemon` loads `bridge.json` and builds `BridgeCore`.
-2. `BridgeCore` manages `BridgeConnection`s and their `TransferPdu`s.
-3. `TransferPdu` applies policy decisions to move data from src to dst endpoints.
+Main responsibilities:
 
----
+- `BridgeCore`: owns connections and drives `cyclic_trigger()`.
+- `BridgeConnection`: binds one source endpoint to one or more destinations.
+- `TransferPdu` / `TransferAtomicPduGroup`: performs logical transfer.
+- Transfer policies: `immediate`, `throttle`, and `ticker`.
+- `EndpointContainer`: endpoint creation and I/O delegated to `hakoniwa-pdu-endpoint`.
+- Monitor CLI: runtime inspection such as `health`, `connections`, `list_pdus`, and `tail`.
 
-## Build
+The Bridge library does not implement transport protocols, persistent queues, retry guarantees, or endpoint JSON loading.
 
-### Dependencies
+## Supported build model
 
-- C++20 compiler (GCC/Clang)
+The preferred build flow is manifest-driven and is the same on Linux, macOS, and Windows.
+
+```text
+hakoniwa-build.yaml
+        |
+        v
+python tools/hako.py doctor
+        |
+        v
+python tools/hako.py configure
+        |
+        v
+python tools/hako.py build
+        |
+        v
+python tools/hako.py test
+```
+
+Default `hakoniwa-build.yaml`:
+
+```yaml
+version: 1
+
+build:
+  type: Release
+  dir: build
+  parallel: 0
+
+components:
+  library: true
+  standalone_app: true
+  hakoniwa_app: false
+  monitor: true
+
+validation:
+  tests: true
+  examples: false
+  integration_tcp: false
+
+paths:
+  pdu_endpoint_root: ""
+  hakoniwa_core_root: ""
+  vcpkg_root: ""
+```
+
+The default configuration is intentionally Core-free. Set `components.hakoniwa_app: true` only when building the Hakoniwa-integrated callback application.
+
+Detailed design: `docs/build-architecture.md`.
+
+## Prerequisites
+
+For the normal Core-free build:
+
+- C++20 toolchain
 - CMake 3.16+
-- Hakoniwa core library (installed under `/usr/local/hakoniwa`)
-- Installed `hakoniwa-pdu-endpoint` library and headers
+- Python 3
+- Boost headers
+- installed or resolvable `hakoniwa-pdu-endpoint`
 
-### hakoniwa-pdu-endpoint install layout
+Platform-specific toolchain details are handled by the resolver:
 
-This project expects the following layout for `hakoniwa-pdu-endpoint`:
+- Linux: GCC/Clang
+- macOS: AppleClang
+- Windows: MSVC/vswhere, with vcpkg support where needed
 
-```
-<prefix>/
-  include/hakoniwa/pdu/endpoint.hpp
-  lib/libhakoniwa_pdu_endpoint.(a|so|dylib)
-```
+Hakoniwa Core is required only for `hakoniwa_app`.
 
-Default prefix is `/usr/local/hakoniwa`. You can override it with:
+## Build with the manifest
+
+Run the preflight first:
 
 ```bash
-cmake -S . -B build -DHAKO_PDU_ENDPOINT_PREFIX=/path/to/prefix
+python3 tools/hako.py doctor
 ```
 
-If your layout is non-standard, set these explicitly:
+Inspect the resolved configuration without building:
+
+```bash
+python3 tools/hako.py configure --dry-run
+```
+
+Configure, build, and test:
+
+```bash
+python3 tools/hako.py configure
+python3 tools/hako.py build
+python3 tools/hako.py test
+```
+
+On Windows, use `python` instead of `python3` when that is the configured Python command.
+
+Resolved build diagnostics are written to:
+
+```text
+.hako/resolved-build.yaml
+.hako/cmake-args.txt
+```
+
+## Direct CMake build
+
+Direct CMake remains supported for maintainers and advanced integrations.
+
+A typical Core-free build is:
 
 ```bash
 cmake -S . -B build \
-  -DHAKO_PDU_ENDPOINT_INCLUDE_DIR=/path/to/include \
-  -DHAKO_PDU_ENDPOINT_LIBRARY=/path/to/libhakoniwa_pdu_endpoint.so
+  -DHAKO_PDU_BRIDGE_BUILD_HAKONIWA_APP=OFF
+cmake --build build
 ```
 
-Note: `hakoniwa-pdu-endpoint` depends on Hakoniwa core libs (`assets`, `shakoc`). Ensure they are in your library path, typically:
-
-```
-/usr/local/hakoniwa/lib
-```
-
-### Steps
+A Hakoniwa-integrated build requires installed Hakoniwa Core and a Core-enabled Endpoint package containing the callback variant:
 
 ```bash
-# 1. out-of-source build
+cmake -S . -B build-hakoniwa \
+  -DCMAKE_PREFIX_PATH="/path/to/endpoint;/path/to/hakoniwa-core" \
+  -DHAKO_PDU_BRIDGE_ENABLE_HAKONIWA_CORE=ON \
+  -DHAKO_PDU_BRIDGE_BUILD_HAKONIWA_APP=ON
+cmake --build build-hakoniwa --target hakoniwa-pdu-web-bridge
+```
+
+The integrated web bridge uses the Endpoint callback package target rather than the polling/shakoc frontend.
+
+## Installed CMake package
+
+Install Bridge to a prefix:
+
+```bash
 cmake -S . -B build \
-  -DHAKO_PDU_ENDPOINT_PREFIX=/usr/local/hakoniwa
-
-# 2. build
+  -DCMAKE_INSTALL_PREFIX=/path/to/install
 cmake --build build
+cmake --install build
 ```
 
-The following binaries will be generated:
+A downstream CMake consumer should use the installed package contract:
 
-- `build/hakoniwa-pdu-bridge`
-- `build/hakoniwa-pdu-web-bridge`
-- `build/hakoniwa-pdu-bridge-monitor`
+```cmake
+find_package(hakoniwa_pdu_bridge CONFIG REQUIRED)
 
-Example programs are built by default:
+add_executable(my_app main.cpp)
+target_link_libraries(my_app
+  PRIVATE
+    hakoniwa_pdu_bridge::bridge
+)
+```
+
+Preferred target:
+
+```text
+hakoniwa_pdu_bridge::bridge
+```
+
+Compatibility target retained for existing consumers such as `hakoniwa-conductor-pro`:
+
+```text
+hakoniwa_pdu_bridge::hakoniwa_pdu_bridge_lib
+```
+
+The Bridge package resolves `hakoniwa-pdu-endpoint` through its CMake package instead of recreating Endpoint include/library paths manually.
+
+## Package-contract validation
+
+The package-contract CI verifies composition from installed packages, not only in-repository builds.
+
+It covers:
+
+1. Core-free Endpoint install
+2. Bridge install
+3. external consumers of both Bridge target names
+4. Hakoniwa Core PRO install
+5. Core-enabled Endpoint callback/polling variants
+6. Hakoniwa-integrated Bridge build using `core_callback`
+
+The workflow runs on Ubuntu x64, native Linux ARM64, macOS, and Windows x64.
+
+This downstream test is intentional: exported CMake target defects can remain invisible when each repository is built only by itself.
+
+## Runtime binaries
+
+Depending on selected components, the build provides:
+
+```text
+hakoniwa-pdu-bridge
+hakoniwa-pdu-web-bridge
+hakoniwa-pdu-bridge-monitor
+```
+
+`hakoniwa-pdu-bridge` is the standalone reference daemon. It supplies a real-time execution loop while the Bridge library itself remains scheduler-independent.
+
+## Standalone bridge
+
+Usage:
 
 ```bash
-cmake -S . -B build
-cmake --build build
+./build/hakoniwa-pdu-bridge \
+  <bridge.json> \
+  <delta_time_step_usec> \
+  <endpoint_container.json> \
+  [node_name]
 ```
 
-If your existing build directory was configured with examples disabled, reconfigure once:
-
-```bash
-cmake -S . -B build -DHAKO_PDU_BRIDGE_BUILD_EXAMPLES=ON
-```
-
-### Helper scripts
-
-```bash
-# Build only
-./build.bash
-
-# Build + install to /usr/local/hakoniwa
-./install.bash
-
-# Uninstall files installed by install.bash
-./uninstall.bash
-```
-
-### Install layout
-
-`install.bash` uses `/usr/local/hakoniwa` as the install prefix.
-
-Installed files:
-- Headers: `/usr/local/hakoniwa/include/hakoniwa/pdu/bridge/*`
-- Library: `/usr/local/hakoniwa/lib/libhakoniwa_pdu_bridge_lib.a`
-- CMake package:
-  - `/usr/local/hakoniwa/lib/cmake/hakoniwa_pdu_bridge/hakoniwa_pdu_bridgeConfig.cmake`
-  - `/usr/local/hakoniwa/lib/cmake/hakoniwa_pdu_bridge/hakoniwa_pdu_bridgeConfigVersion.cmake`
-  - `/usr/local/hakoniwa/lib/cmake/hakoniwa_pdu_bridge/hakoniwa_pdu_bridgeTargets.cmake`
-
-### Hakoniwa core install notes
-
-- Headers: `/usr/local/hakoniwa/include/hakoniwa`
-- Libraries: `/usr/local/hakoniwa/lib`
-- `hakoniwa-pdu-endpoint` default search prefix: `/usr/local/hakoniwa`
-  - Header auto-detect target: `hakoniwa/pdu/endpoint.hpp`
-  - Library auto-detect target: `libhakoniwa_pdu_endpoint.*`
-
-If shared libraries are not found at runtime, add `LD_LIBRARY_PATH` (Linux) or `DYLD_LIBRARY_PATH` (macOS).
-
----
-
-## Run
-
-Note: `hakoniwa-pdu-bridge` is a reference daemon that wires the bridge library with a `real` time source.
-Library integrators can provide their own `ITimeSource` and execution loop.
-
-```bash
-./build/hakoniwa-pdu-bridge <bridge.json> <delta_time_step_usec> <endpoint_container.json> [node_name]
-```
-
-- `bridge.json`: config for this repository
-- `delta_time_step_usec`: tick interval used by the reference daemon's real-time loop (microseconds)
-- `endpoint_container.json`: config for endpoint loader (`hakoniwa-pdu-endpoint`)
-- `node_name`: optional, default `node1`
-`delta_time_step_usec` only affects the reference daemon sleep interval; policy decisions still read time via the injected `ITimeSource` in the library.
-
-### Example (single node, local)
+Example:
 
 ```bash
 ./build/hakoniwa-pdu-bridge \
@@ -175,7 +255,7 @@ Library integrators can provide their own `ITimeSource` and execution loop.
   node1
 ```
 
-### Example (two nodes, TCP)
+Two-node TCP example:
 
 ```bash
 # node1
@@ -193,57 +273,39 @@ Library integrators can provide their own `ITimeSource` and execution loop.
   node2
 ```
 
-Notes:
-- These are integration configs under `test/config/tcp/`.
-- The same `endpoints.json` contains both `node1` and `node2`; each daemon selects its node by `node_name`.
+`delta_time_step_usec` controls the standalone daemon's loop sleep. Transfer policies still read time through the injected `ITimeSource`.
 
-### Web bridge daemon
+## Hakoniwa web bridge
 
-`hakoniwa-pdu-web-bridge` is the Web bridge daemon for replacing legacy `hakoniwa-webserver`.
-It runs as a Hakoniwa callback asset and uses the managed config set under `config/web_bridge/`.
+`hakoniwa-pdu-web-bridge` is the Hakoniwa callback integration used for WebSocket bridging.
 
-Default config paths:
+It:
 
-- config root: `config/web_bridge`
-- bridge config: `config/web_bridge/bridge/bridge.json`
-- endpoint container: `config/web_bridge/endpoint/endpoint_container.json`
-- asset config: `config/web_bridge/pdu/drone-pdudef.json`
-- WebSocket server: `ws://127.0.0.1:8765`
+- registers as a Hakoniwa callback asset
+- uses Endpoint SHM callback support
+- transfers once per simulation step
+- uses `hakoniwa_callback` time for policy evaluation
+- optionally applies real-time sleep for wall-clock pacing
 
-Usage:
+Default configuration root:
 
-```bash
-./build/hakoniwa-pdu-web-bridge \
-  [--config-root <path>] \
-  [--bridge-config <path>] \
-  [--endpoint-container <path>] \
-  [--asset-config <path>] \
-  [--enable-ondemand] \
-  [--ondemand-mux-config <path>] \
-  [--node-name <name>] \
-  [--asset-name <name>] \
-  [--delta-time-step-usec <usec>] \
-  [--disable-real-sleep]
+```text
+config/web_bridge
 ```
 
-Options:
+Important files:
 
-- `--config-root`: root directory for the managed web bridge config set
-- `--bridge-config`: override `bridge.json`
-- `--endpoint-container`: override endpoint container config
-- `--asset-config`: override Hakoniwa asset pdudef config
-- `--enable-ondemand`: enable on-demand monitor runtime
-- `--ondemand-mux-config`: override on-demand monitor mux endpoint config
-- `--node-name`: node selector for `EndpointContainer` and `bridge.json`
-- `--asset-name`: Hakoniwa asset name used by `hako_asset_register()`
-- `--delta-time-step-usec`: real-time sleep interval used by the bridge daemon
-- `--disable-real-sleep`: disable real-time sleep in each simulation step
+```text
+config/web_bridge/bridge/bridge.json
+config/web_bridge/endpoint/endpoint_container.json
+config/web_bridge/pdu/drone-pdudef.json
+```
 
-Default:
+Default WebSocket endpoint:
 
-- `delta_time_step_usec = 20000` (`20ms`)
-- real sleep = enabled
-- on-demand mux config = `config/web_bridge/monitor/mux_endpoint.json`
+```text
+ws://127.0.0.1:8765
+```
 
 Example:
 
@@ -254,149 +316,38 @@ Example:
   --delta-time-step-usec 20000
 ```
 
-On-demand monitor:
+Useful options:
 
-```bash
-./build/hakoniwa-pdu-web-bridge \
-  --config-root /usr/local/hakoniwa/share/hakoniwa-pdu-bridge/config/web_bridge \
-  --enable-ondemand \
-  --ondemand-mux-config /usr/local/hakoniwa/share/hakoniwa-pdu-bridge/config/web_bridge/monitor/mux_endpoint.json
+```text
+--config-root <path>
+--bridge-config <path>
+--endpoint-container <path>
+--asset-config <path>
+--enable-ondemand
+--ondemand-mux-config <path>
+--node-name <name>
+--asset-name <name>
+--delta-time-step-usec <usec>
+--disable-real-sleep
 ```
 
-Installed example:
+Additional managed config sets:
 
-```bash
-/usr/local/hakoniwa/bin/hakoniwa-pdu-web-bridge \
-  --config-root /usr/local/hakoniwa/share/hakoniwa-pdu-bridge/config/web_bridge
-```
+- `config/web_bridge_fleets/`: fleet-oriented SHM -> WebSocket visualization traffic
+- `config/web_bridge_game/`: minimal WebSocket -> SHM game-command bridge
 
-Behavior summary:
+## Quickstart
 
-- runs as a Hakoniwa callback asset
-- initializes SHM callback endpoint and WebSocket server endpoint
-- executes bridge transfer once per `on_simulation_step()`
-- uses `hakoniwa_callback` time as the bridge policy clock
-- uses a separate `real` time source only for optional wall-clock sleep
-- sleeps for `delta_time_step_usec` in real time after each step when real sleep is enabled
-
-If real sleep is enabled:
-
-- each simulation step ends with a real-time sleep
-- the default sleep is `20ms`
-- this is useful when you want to align WebSocket delivery with wall-clock pacing
-
-If real sleep is disabled:
-
-- the bridge does not sleep in `on_simulation_step()`
-- pacing is left entirely to the Hakoniwa side and caller environment
-
-Unity side:
-
-- packet format: `v2`
-- connection URL: `ws://127.0.0.1:8765`
-- static transfer targets are defined in `config/web_bridge/bridge/bridge.json`
-
-### Web bridge fleets config
-
-`config/web_bridge_fleets/` is the fleet-oriented Web bridge config set for
-forwarding `DroneVisualStatePublisher` output from SHM to WebSocket.
-
-Intent:
-
-- use the SHM output produced by `DroneVisualStatePublisher`
-- forward `hako_msgs/DroneVisualStateArray` to a WebSocket endpoint
-- keep the bridge one-way (`SHM -> WebSocket`)
-
-Current assumptions:
-
-- robot name: `DroneVisualStatePublisher`
-- transfer target: `drone_visual_state_array_0`
-- SHM comm mode: `callback`
-- bridge policy: `ticker_20ms`
-
-Main files:
-
-- `config/web_bridge_fleets/bridge/bridge.json`
-- `config/web_bridge_fleets/endpoint/endpoint_container.json`
-- `config/web_bridge_fleets/endpoint/visual-state-shm.json`
-- `config/web_bridge_fleets/endpoint/visual-state-ws.json`
-- `config/web_bridge_fleets/pdu/drone-visual-state.json`
-
-This config set is intended for fleet visualization traffic and is separate from
-the legacy single-drone `config/web_bridge/` set.
-
-Example startup:
-
-```bash
-./tools/run-web-bridge.bash \
-  --config-root config/web_bridge_fleets \
-  --asset-name WebBridgeFleets \
-  --node-name web_bridge_fleets_node1 \
-  --delta-time-step-usec 20000
-```
-
-`tools/run-web-bridge.bash` forwards arguments directly to
-`hakoniwa-pdu-web-bridge`, so switching from `config/web_bridge/` to
-`config/web_bridge_fleets/` only requires replacing `--config-root`.
-
-### Web bridge game command config
-
-`config/web_bridge_game/` is the minimal Web bridge config set for forwarding
-only `Drone.hako_cmd_game` from WebSocket to SHM.
-
-Intent:
-
-- receive `hako_cmd_game` on the WebSocket server endpoint
-- reflect it to the SHM callback endpoint immediately
-- avoid unrelated PDU wiring
-
-Main files:
-
-- `config/web_bridge_game/bridge/bridge.json`
-- `config/web_bridge_game/endpoint/endpoint_container.json`
-- `config/web_bridge_game/endpoint/drone-game-ws.json`
-- `config/web_bridge_game/endpoint/drone-game-shm.json`
-- `config/web_bridge_game/pdu/drone-pdudef.json`
-
-Example startup:
-
-```bash
-./tools/run-web-bridge.bash \
-  --config-root config/web_bridge_game \
-  --asset-name WebBridgeGame \
-  --node-name web_bridge_game_node1 \
-  --delta-time-step-usec 20000
-```
-
-Validation:
+Validate Bridge/Endpoint configuration consistency first:
 
 ```bash
 python3 tools/check_bridge_config.py \
-  config/web_bridge_game/bridge/bridge.json \
-  --endpoint-container config/web_bridge_game/endpoint/endpoint_container.json
+  config/tutorials/bridge-immediate.json \
+  --endpoint-container config/tutorials/endpoint_container.json
 ```
 
-Runtime behavior:
+Start the bridge:
 
-- WebSocket server listens on `ws://127.0.0.1:8765`
-- only `Drone.hako_cmd_game` is transferred
-- direction is `WebSocket -> SHM`
-- transfer policy is `immediate`
-
----
-
-## Quickstart (1-minute, local)
-
-This is the fastest way to see data flowing on a single machine.
-This workflow is explicit by design so timing and delivery assumptions stay visible.
-
-Before running, validate that `bridge.json` and `endpoint_container.json` are consistent:
-This catches `endpointId` drift across `bridge.json` and `endpoint_container.json`.
-```bash
-python3 tools/check_bridge_config.py config/tutorials/bridge-immediate.json --endpoint-container config/tutorials/endpoint_container.json
-```
-
-Terminal 1 (bridge daemon):
 ```bash
 ./build/hakoniwa-pdu-bridge \
   config/tutorials/bridge-immediate.json \
@@ -405,113 +356,102 @@ Terminal 1 (bridge daemon):
   node1
 ```
 
-Terminal 2 (reader):
-```bash
-build/examples/bridge_reader \
-  config/tutorials/endpoint/reader.json \
-  Drone \
-  pos \
-  10
-```
+Then run the tutorial writer and reader from separate terminals:
 
-Terminal 3 (writer):
 ```bash
 build/examples/bridge_writer \
   config/tutorials/endpoint/writer.json \
-  Drone \
-  pos \
-  10
+  Drone pos 10
 ```
-
-Expected output:
-- writer prints `sent seq=...`
-- reader prints `recv bytes=... text="ts=... seq=..."`
-
-If it fails, check these first:
-- `Bridge build failed: ... endpoint not found`: ensure `endpointId` in `bridge.json` exists in `endpoint_container.json` for the selected `node_name`
-- `Failed to open endpoint`: verify `endpoint.json` and its `config_path` resolution
-- `PDU size is 0`: check `robot`/`pdu` names against the endpoint `pdu_def_path`
-- `No data arrives on reader`: confirm endpoint directions (`in`/`out`) and port conflicts in `config/tutorials/comm/`
-
-## On-Demand Monitor CLI
-
-The monitor client binary is built as `build/hakoniwa-pdu-bridge-monitor` (or `cmake-build/hakoniwa-pdu-bridge-monitor`).
 
 ```bash
-# health
-cmake-build/hakoniwa-pdu-bridge-monitor <monitor_endpoint.json> health
-
-# list current bridge connections
-cmake-build/hakoniwa-pdu-bridge-monitor <monitor_endpoint.json> connections
-
-# list monitor sessions
-cmake-build/hakoniwa-pdu-bridge-monitor <monitor_endpoint.json> sessions
-
-# list transferable PDUs in a connection
-cmake-build/hakoniwa-pdu-bridge-monitor <monitor_endpoint.json> list_pdus <connection_id>
-
-# subscribe / unsubscribe
-cmake-build/hakoniwa-pdu-bridge-monitor <monitor_endpoint.json> subscribe <connection_id> throttle 100
-cmake-build/hakoniwa-pdu-bridge-monitor <monitor_endpoint.json> unsubscribe <session_id>
-
-# tail data plane metadata (Ctrl-C to stop)
-cmake-build/hakoniwa-pdu-bridge-monitor <monitor_endpoint.json> tail <connection_id> throttle 100
-
-# tail for 10 seconds
-cmake-build/hakoniwa-pdu-bridge-monitor <monitor_endpoint.json> tail <connection_id> throttle 100 10
+build/examples/bridge_reader \
+  config/tutorials/endpoint/reader.json \
+  Drone pos 10
 ```
 
-Ready-to-run on-demand monitor tutorial (daemon + writer + reader + monitor CLI):
-- `docs/tutorials/monitor.md`
-- bridge-side mux config: `config/tutorials/monitor/mux_endpoint.json`
-- client-side endpoint config: `config/tutorials/monitor/client_endpoint.json`
+Expected behavior:
 
-`tail` arguments:
-- `<connection_id>`: monitor target connection (e.g. `conn1`)
-- `[policy]`: `immediate | throttle | ticker` (default: bridge-side default policy)
-- `[interval_ms]`: required for `throttle`/`ticker` in explicit policy mode (e.g. `100`)
-- `[duration_sec]`: optional auto-stop duration; omit to run until Ctrl-C
+- writer prints `sent seq=...`
+- reader prints received payloads
 
-`tail` output format:
+## Monitor CLI
+
+The monitor client provides on-demand runtime introspection.
+
+```bash
+build/hakoniwa-pdu-bridge-monitor <monitor_endpoint.json> health
+build/hakoniwa-pdu-bridge-monitor <monitor_endpoint.json> connections
+build/hakoniwa-pdu-bridge-monitor <monitor_endpoint.json> sessions
+build/hakoniwa-pdu-bridge-monitor <monitor_endpoint.json> list_pdus <connection_id>
+build/hakoniwa-pdu-bridge-monitor <monitor_endpoint.json> tail <connection_id> throttle 100
+```
+
+Tutorial:
+
 ```text
-[monitor-data]
-  timestamp_usec: 1771640877548980
-  robot: Drone
-  channel_id: 1
-  pdu_name: pos
-  payload_size: 72
-  epoch: N/A
+docs/tutorials/monitor.md
 ```
 
-Notes:
-- `tail` internally performs `list_pdus` + `subscribe`, and auto `unsubscribe` on exit.
-- `epoch` shows `N/A` when payload is not in Hakoniwa PDU metadata format.
+## Bridge configuration
 
-## Troubleshooting
+`bridge.json` follows:
 
-- `PDU size is 0`: the `robot`/`pdu` pair does not exist in the endpoint `pdu_def_path` JSON.
-- `Failed to open endpoint`: `endpoint.json` path or `config_path` inside it is wrong.
-- `Bridge build failed: ... endpoint not found`: the `endpointId` in `bridge.json` does not exist in `endpoint_container.json` for the selected `node_name`.
-- No data arrives on reader: check endpoint directions (`in`/`out`) and that ports in `config/tutorials/comm/` are not used by other processes.
-- Schema validation fails: install `jsonschema` for the Python checker or use `ajv` for the JSON schema.
-If you hit config drift, run the `check_bridge_config.py` command shown in Quickstart.
+```text
+config/schema/bridge-schema.json
+```
 
-## FAQ
+Main top-level fields:
 
-- Q: Why is there no `time_source_type` in `bridge.json`? A: The time source is provided by the caller. The library uses the injected `ITimeSource` for policy decisions, and the sample daemon creates a `real` time source and sleeps each loop.
-- Q: Why are there two config files? A: `bridge.json` declares logical transfers; `endpoint_container.json` declares concrete endpoints and transport details.
-- Q: Why not combine them? A: Keeping timing/flow separate from transport wiring avoids hidden delivery assumptions.
-- Q: What does `atomic: true` guarantee? A: The group transfers only after all PDUs in the group have updated; it does not guarantee identical generation timestamps.
-- Q: `tail` shows no output. Is it broken? A: First confirm source data is being produced (writer running), then check `list_pdus <connection_id>` and `connections`. `tail` only prints when matching data actually arrives.
-- Q: In `tail conn1 throttle 100 10`, what are `100` and `10`? A: `100` is `interval_ms` (throttle period), `10` is `duration_sec` (auto-stop after 10s).
-- Q: Why is `epoch` shown as `N/A`? A: `epoch` is only shown when payload is readable as Hakoniwa PDU metadata format. Otherwise `N/A` is expected.
-- Q: I see `control session connected/disconnected` in bridge logs. Is this an error? A: Usually no. It appears when monitor CLI connects and then exits.
-- Q: I see `TCP Comm send failed: not connected.` once, but command still works. Is this an error? A: Usually transient during connection establishment; if responses are returned, you can ignore it.
-- Q: How can I inspect live bridge data like ROS `topic echo`? A: Use monitor CLI `tail`. Example: `cmake-build/hakoniwa-pdu-bridge-monitor config/tutorials/monitor/client_endpoint.json tail conn1 throttle 100` (or append duration seconds, e.g. `... 10`).
+- `version`
+- `transferPolicies`
+- `nodes`
+- `pduKeyGroups`
+- `connections`
+
+`bridge.json` describes logical timing and transfer flow. `endpoint_container.json` describes concrete endpoint/transport wiring.
+
+Validate configuration with:
+
+```bash
+python3 tools/check_bridge_config.py path/to/bridge.json
+python3 tools/check_bridge_config.py \
+  path/to/bridge.json \
+  --endpoint-container path/to/endpoint_container.json
+```
+
+## Transfer policies
+
+Supported policy types:
+
+- `immediate`: transfer when source data updates
+- `throttle`: transfer updates while enforcing a minimum interval
+- `ticker`: send the latest value on a fixed interval
+
+When `immediate` uses `atomic: true`, all PDUs in the same transfer group are emitted only after the full group has updated. Include `hako_msgs/SimTime` when the frame needs an explicit simulation-time signal.
+
+## Time-source model
+
+The Bridge library is a policy engine, not a scheduler.
+
+Therefore:
+
+- the library receives an `ITimeSource` from its caller
+- the library does not choose real vs virtual vs Hakoniwa time
+- the library itself does not sleep
+- `throttle` and `ticker` evaluate their timing against the injected source
+- the standalone daemon provides real time
+- the Hakoniwa web bridge provides callback simulation time
 
 ## Tests
 
-Use GTest. After building, run `ctest`.
+Normal test flow:
+
+```bash
+python3 tools/hako.py test
+```
+
+Direct CMake flow:
 
 ```bash
 cmake -S . -B build
@@ -519,216 +459,43 @@ cmake --build build
 ctest --test-dir build
 ```
 
-You can override the config root with `HAKO_TEST_CONFIG_DIR`.
+Set `HAKO_TEST_CONFIG_DIR` to override the test config root when needed.
 
-```bash
-HAKO_TEST_CONFIG_DIR=/path/to/test/config ctest --test-dir build
-```
+## CI model
 
----
+Two CI layers validate different guarantees.
 
-## Config check tool
+### Manifest Build
 
-There is a helper script to validate `bridge.json` and check referenced paths.
+Ubuntu, macOS, and Windows workflows exercise the user-facing manifest build path with Core disabled.
 
-```bash
-python3 tools/check_bridge_config.py path/to/bridge.json
-python3 tools/check_bridge_config.py path/to/bridge.json --endpoint-container path/to/endpoint_container.json
-```
+### Package Contract
 
-Notes:
-- Schema validation requires the `jsonschema` Python package.
-- Path checks ensure `endpoints_config_path` and endpoint container `config_path` entries exist on disk.
+The package-contract workflow exercises installed CMake packages and the optional Hakoniwa callback integration, including native Linux ARM64.
 
----
-
-## Tutorials
-
-Policy-specific tutorials live under `docs/tutorials/`:
-
-- `docs/tutorials/README.md`
-- `docs/tutorials/immediate.md`
-- `docs/tutorials/throttle.md`
-- `docs/tutorials/ticker.md`
-
----
-
-## Bridge configuration
-
-`bridge.json` must follow `config/schema/bridge-schema.json`.
-
-Required top-level fields:
-- `version` (currently `2.0.0`)
-- `transferPolicies`
-- `nodes`
-- `pduKeyGroups`
-- `connections`
-
-Constraints:
-- IDs must match `^[A-Za-z][A-Za-z0-9_\-\.]*$`
-- `throttle` and `ticker` require `intervalMs`
-- `immediate` must not specify `intervalMs`
-
-Notes:
-- `wireLinks` is reserved for wire endpoint topology; keep it as `[]` unless that topology is needed.
-- `endpoints_config_path` is optional and points to an endpoint container JSON file (used by `tools/check_bridge_config.py`).
-
-### Schema validation
-
-```bash
-ajv validate -s config/schema/bridge-schema.json -d bridge.json
-```
-
----
-
-## Endpoint container config
-
-`endpoint_container.json` is the **EndpointContainer** config read by `hakoniwa-pdu-endpoint`. It is a list grouped by `nodeId`.
-
-Example (`config/tutorials/endpoint_container.json`):
-
-```json
-[
-  {
-    "nodeId": "node1",
-    "endpoints": [
-      { "id": "n1-epSrc", "mode": "local", "config_path": "endpoint/bridge-src.json", "direction": "in" },
-      { "id": "n1-epDst", "mode": "local", "config_path": "endpoint/bridge-dst.json", "direction": "out" }
-    ]
-  }
-]
-```
-
-`config_path` is resolved **relative to the endpoint_container.json file**.
-
----
-
-## Transfer policies (overview)
-
-- **immediate**: transfer on update (lowest latency)
-- **throttle**: follow updates but enforce a minimum interval
-- **ticker**: send the latest value on a fixed interval, even without updates
-
-### immediate (atomic)
-
-If `immediate` has `atomic: true`, all PDUs in the same `transferPdus` group are treated as one frame.
-
-- transfer only after all target PDUs have been updated
-- frame time `T_frame` is the time observed by the bridge
-- does not guarantee identical generation timestamps for each PDU
-
-**Important:** When using `atomic: true`, include `hako_msgs/SimTime` to signal time.
-
-Example config: `config/tutorials/bridge-immediate-atomic.json`.
-
----
-
-## Time source (why)
-
-Transfer policies such as `throttle` and `ticker` require a clock.
-However, the bridge must not decide **which** clock to use.
-
-The bridge is a policy engine, not a scheduler.
-Simulations may run on real time, virtual time, or externally synchronized time.
-Selecting the clock is an integration concern, not a transfer concern.
-
-Therefore, the time source is **injected by the caller**.
-
-What this means:
-- the library reads time via `ITimeSource` only for policy decisions
-- the library itself never sleeps and does not drive the execution loop
-- `immediate` is event-driven and ignores the time source
-- the sample daemon provides a `real` time source and sleeps each loop, but that is only one caller choice
-
----
-
-## Runtime delegation (epoch)
-
-At owner switching boundaries, old and new owners may send concurrently, so receivers must discard stale epochs. This is handled in `TransferPdu` and not in policy logic.
-
----
-
-## Minimal example
-
-```json
-{
-  "version": "2.0.0",
-  "transferPolicies": {
-    "immediate_policy": { "type": "immediate" }
-  },
-  "nodes": [
-    { "id": "node1" },
-    { "id": "node2" }
-  ],
-  "pduKeyGroups": {
-    "drone_data": [
-      { "id": "Drone.pos", "robot_name": "Drone", "pdu_name": "pos" },
-      { "id": "Drone.status", "robot_name": "Drone", "pdu_name": "status" }
-    ]
-  },
-  "connections": [
-    {
-      "id": "node1_to_node2_conn",
-      "nodeId": "node1",
-      "source": { "endpointId": "n1-to-n2-src" },
-      "destinations": [{ "endpointId": "n1-to-n2-dst" }],
-      "transferPdus": [
-        { "pduKeyGroupId": "drone_data", "policyId": "immediate_policy" }
-      ]
-    },
-    {
-      "id": "node2_from_node1_conn",
-      "nodeId": "node2",
-      "source": { "endpointId": "n2-from-n1-src" },
-      "destinations": [{ "endpointId": "n2-from-n1-dst" }],
-      "transferPdus": [
-        { "pduKeyGroupId": "drone_data", "policyId": "immediate_policy" }
-      ]
-    }
-  ]
-}
-```
-
----
+All workflows use per-ref concurrency so superseded runs are cancelled automatically. Documentation-only changes do not trigger the heavy build workflows.
 
 ## Design philosophy
 
-This repository implements bridge-side logic only:
-- transfer timing is handled here
-- transport and endpoint I/O are handled by `hakoniwa-pdu-endpoint`
+Responsibility boundaries are intentional:
 
-Responsibility boundaries:
-- this bridge decides **when** to transfer
-- endpoints decide **how** to communicate (TCP/UDP/SHM/etc.)
-- the caller provides the time source and drives the execution loop
+```text
+Bridge
+  -> when to transfer
 
-The time source is injected to allow integration-specific control over time.
-The bridge reads time via `ITimeSource` only for policy decisions, and never sleeps.
+Endpoint
+  -> how to communicate
 
-## Target users
+Caller / runtime
+  -> which clock and execution loop to use
+```
 
-This component is intended for:
-- developers building distributed simulations
-- integrators managing multi-node PDU flows
-- system architects who need explicit control over transfer timing
-
-It is not intended as a general-purpose messaging library.
-
-## Why declarative configuration
-
-Transfer timing and flow are expressed in `bridge.json`:
-- data flow logic is visible in configuration
-- timing policies are not hidden in application code
-- integration changes do not require recompilation
-- delivery/timing assumptions remain explicit and reviewable
-
-The bridge treats transfer behavior as configuration, not embedded logic.
-`bridge.json` expresses logical timing/flow, while `endpoint_container.json` expresses concrete transport wiring, keeping assumptions explicit and reviewable.
-
----
+This separation keeps transfer policy visible and testable while allowing transport and runtime implementations to evolve independently.
 
 ## Further reading
 
-- Transfer policy tutorials: `docs/tutorials/`
+- Build architecture: `docs/build-architecture.md`
+- Transfer tutorials: `docs/tutorials/`
+- Monitor tutorial: `docs/tutorials/monitor.md`
 - Bridge schema: `config/schema/bridge-schema.json`
-- Endpoint configuration: see `hakoniwa-pdu-endpoint`
+- Endpoint implementation: `hakoniwalab/hakoniwa-pdu-endpoint`
