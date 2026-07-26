@@ -57,7 +57,10 @@ jobs:
           cmake --install endpoint/build-core --config Release --prefix "${GITHUB_WORKSPACE}/endpoint-core-install" >/dev/null
 
       - name: Configure Hakoniwa-integrated Bridge
+        id: configure
+        shell: bash
         run: |
+          set +e
           cmake -S . -B build-hakoniwa \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_PREFIX_PATH="${GITHUB_WORKSPACE}/endpoint-core-install;${GITHUB_WORKSPACE}/core-install" \
@@ -68,9 +71,14 @@ jobs:
             -DHAKO_PDU_BRIDGE_BUILD_STANDALONE_APP=OFF \
             -DHAKO_PDU_BRIDGE_BUILD_MONITOR=OFF \
             -DHAKO_PDU_BRIDGE_BUILD_TESTS=OFF \
-            -DHAKO_PDU_BRIDGE_BUILD_EXAMPLES=OFF >/dev/null
+            -DHAKO_PDU_BRIDGE_BUILD_EXAMPLES=OFF > bridge-configure.log 2>&1
+          status=$?
+          echo "exit_code=${status}" >> "$GITHUB_OUTPUT"
+          tail -n 120 bridge-configure.log
+          exit 0
 
       - name: Capture failing Linux link
+        if: steps.configure.outputs.exit_code == '0'
         id: link
         shell: bash
         run: |
@@ -82,15 +90,21 @@ jobs:
           tail -n 120 bridge-link.log
           exit 0
 
-      - name: Upload Linux link diagnostics
+      - name: Upload Linux diagnostics
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: linux-core-link-diagnostics
           path: |
+            bridge-configure.log
             bridge-link.log
             link-commands.txt
-          if-no-files-found: error
+          if-no-files-found: warn
+
+      - name: Fail when configure failed
+        if: steps.configure.outputs.exit_code != '0'
+        run: exit 1
 
       - name: Fail when link failed
-        if: steps.link.outputs.exit_code != '0'
+        if: steps.configure.outputs.exit_code == '0' && steps.link.outputs.exit_code != '0'
         run: exit 1
