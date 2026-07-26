@@ -140,16 +140,21 @@ set(PDU_BRIDGE_LIB_SOURCES ${PDU_BRIDGE_SOURCES})
 list(REMOVE_ITEM PDU_BRIDGE_LIB_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/daemon.cpp")
 list(REMOVE_ITEM PDU_BRIDGE_LIB_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/web_bridge_daemon.cpp")
 
-# Bridge Core library. Its public runtime dependency is the Core-free/legacy
-# Endpoint package target. Core integration belongs to concrete applications.
-add_library(hakoniwa_pdu_bridge_lib ${PDU_BRIDGE_LIB_SOURCES})
+function(hako_configure_bridge_library target_name endpoint_target)
+  add_library(${target_name} ${PDU_BRIDGE_LIB_SOURCES})
+  target_include_directories(${target_name}
+    PUBLIC
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+      $<INSTALL_INTERFACE:include>
+  )
+  target_link_libraries(${target_name} PUBLIC ${endpoint_target})
+endfunction()
+
+# Public Bridge Core library. Its package contract stays Core-free and continues
+# to use the base Endpoint target. Existing consumers such as Conductor PRO keep
+# seeing this target through the installed Bridge package.
+hako_configure_bridge_library(hakoniwa_pdu_bridge_lib ${HAKO_ENDPOINT_BASE_TARGET})
 set_target_properties(hakoniwa_pdu_bridge_lib PROPERTIES EXPORT_NAME bridge)
-target_include_directories(hakoniwa_pdu_bridge_lib
-  PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
-)
-target_link_libraries(hakoniwa_pdu_bridge_lib PUBLIC ${HAKO_ENDPOINT_BASE_TARGET})
 
 if(HAKO_PDU_BRIDGE_BUILD_STANDALONE_APP)
   add_executable(hakoniwa-pdu-bridge src/daemon.cpp)
@@ -163,13 +168,17 @@ if(HAKO_PDU_BRIDGE_BUILD_HAKONIWA_APP)
       "Install a Core-enabled hakoniwa-pdu-endpoint package or provide the legacy Core prefix.")
   endif()
 
+  # Do not link the Core-free Bridge library and core_callback Endpoint into the
+  # same executable. They contain alternative Endpoint implementations, which
+  # causes duplicate/competing linkage on GNU/Linux. Build an internal Bridge
+  # variant whose only Endpoint dependency is the callback variant instead.
+  hako_configure_bridge_library(hakoniwa_pdu_bridge_core_callback ${HAKO_ENDPOINT_CALLBACK_TARGET})
+  if(HAKO_PDU_BRIDGE_LEGACY_CORE_LIBS)
+    target_link_libraries(hakoniwa_pdu_bridge_core_callback PUBLIC ${HAKO_PDU_BRIDGE_LEGACY_CORE_LIBS})
+  endif()
+
   add_executable(hakoniwa-pdu-web-bridge src/web_bridge_daemon.cpp)
-  target_link_libraries(hakoniwa-pdu-web-bridge
-    PRIVATE
-      hakoniwa_pdu_bridge_lib
-      ${HAKO_ENDPOINT_CALLBACK_TARGET}
-      ${HAKO_PDU_BRIDGE_LEGACY_CORE_LIBS}
-  )
+  target_link_libraries(hakoniwa-pdu-web-bridge PRIVATE hakoniwa_pdu_bridge_core_callback)
 
   if(NOT HAKO_USING_ENDPOINT_PACKAGE)
     target_include_directories(hakoniwa-pdu-web-bridge PRIVATE
