@@ -277,6 +277,16 @@ class BuildContext:
             args.append(f"-DHAKO_PDU_ENDPOINT_PREFIX={self.endpoint_root}")
         if self.core_root:
             args.append(f"-DHAKO_PDU_BRIDGE_HAKONIWA_CORE_ROOT={self.core_root}")
+        dependency_prefixes = [
+            str(root)
+            for root in (self.endpoint_root, self.core_root)
+            if root is not None
+        ]
+        if dependency_prefixes:
+            # The Endpoint package uses find_dependency(hakoniwa-core). Passing
+            # only the Bridge-specific Core variable is therefore insufficient
+            # when Core is installed outside the platform's default prefix.
+            args.append(f"-DCMAKE_PREFIX_PATH={';'.join(dependency_prefixes)}")
         if self.vcpkg_root:
             args.append(f"-DCMAKE_TOOLCHAIN_FILE={self.vcpkg_root / 'scripts' / 'buildsystems' / 'vcpkg.cmake'}")
             if self.platform_name == "windows":

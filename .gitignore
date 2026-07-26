@@ -3,6 +3,7 @@
 
 .vscode
 build
+build-*/
 .hako
 
 .DS_Store
