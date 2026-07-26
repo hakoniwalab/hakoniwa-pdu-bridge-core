@@ -1,0 +1,96 @@
+name: linux-core-link-diagnostic
+
+on:
+  pull_request:
+    paths:
+      - "CMakeLists.txt"
+      - ".github/workflows/linux-core-link-diagnostic.yml"
+
+concurrency:
+  group: linux-core-link-diagnostic-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  diagnose-linux-core-link:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Bridge
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update >/dev/null
+          sudo apt-get install -y g++-12 cmake libboost-dev >/dev/null
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-12 12 >/dev/null
+
+      - name: Build and install Hakoniwa Core PRO
+        run: |
+          git clone --recursive --quiet https://github.com/hakoniwalab/hakoniwa-core-pro.git core
+          cmake -S core -B core/build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX="${GITHUB_WORKSPACE}/core-install" \
+            -DHAKO_CORE_CONFIG_INSTALL_DIR=etc/hakoniwa \
+            -DHAKO_CORE_PRO_BUILD_COMMAND=OFF \
+            -DHAKO_CORE_PRO_BUILD_EXAMPLES=OFF \
+            -DHAKO_CORE_PRO_BUILD_PYTHON_BINDINGS=OFF \
+            -DHAKO_ENABLE_GTEST=OFF >/dev/null
+          cmake --build core/build --config Release >/dev/null
+          cmake --install core/build --config Release --prefix "${GITHUB_WORKSPACE}/core-install" >/dev/null
+
+      - name: Build and install Core-enabled Endpoint callback package
+        run: |
+          git clone --quiet https://github.com/hakoniwalab/hakoniwa-pdu-endpoint.git endpoint
+          cmake -S endpoint -B endpoint/build-core \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX="${GITHUB_WORKSPACE}/endpoint-core-install" \
+            -DCMAKE_PREFIX_PATH="${GITHUB_WORKSPACE}/core-install" \
+            -DHAKO_PDU_ENDPOINT_ENABLE_HAKONIWA_CORE=ON \
+            -DHAKO_PDU_ENDPOINT_HAKONIWA_CORE_ROOT="${GITHUB_WORKSPACE}/core-install" \
+            -DHAKO_PDU_ENDPOINT_BUILD_TESTS=OFF \
+            -DHAKO_PDU_ENDPOINT_BUILD_EXAMPLES=OFF \
+            -DHAKO_PDU_ENDPOINT_BUILD_TOOLS=OFF \
+            -DHAKO_PDU_ENDPOINT_BUILD_BENCHMARKS=OFF \
+            -DHAKO_PDU_ENDPOINT_INSTALL=ON >/dev/null
+          cmake --build endpoint/build-core --config Release --target hakoniwa_pdu_endpoint >/dev/null
+          cmake --build endpoint/build-core --config Release --target hakoniwa_pdu_endpoint_core_callback >/dev/null
+          cmake --build endpoint/build-core --config Release --target hakoniwa_pdu_endpoint_core_polling >/dev/null
+          cmake --install endpoint/build-core --config Release --prefix "${GITHUB_WORKSPACE}/endpoint-core-install" >/dev/null
+
+      - name: Configure Hakoniwa-integrated Bridge
+        run: |
+          cmake -S . -B build-hakoniwa \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="${GITHUB_WORKSPACE}/endpoint-core-install;${GITHUB_WORKSPACE}/core-install" \
+            -DHAKO_PDU_ENDPOINT_PREFIX="${GITHUB_WORKSPACE}/endpoint-core-install" \
+            -DHAKO_PDU_BRIDGE_HAKONIWA_CORE_ROOT="${GITHUB_WORKSPACE}/core-install" \
+            -DHAKO_PDU_BRIDGE_ENABLE_HAKONIWA_CORE=ON \
+            -DHAKO_PDU_BRIDGE_BUILD_HAKONIWA_APP=ON \
+            -DHAKO_PDU_BRIDGE_BUILD_STANDALONE_APP=OFF \
+            -DHAKO_PDU_BRIDGE_BUILD_MONITOR=OFF \
+            -DHAKO_PDU_BRIDGE_BUILD_TESTS=OFF \
+            -DHAKO_PDU_BRIDGE_BUILD_EXAMPLES=OFF >/dev/null
+
+      - name: Capture failing Linux link
+        id: link
+        shell: bash
+        run: |
+          set +e
+          cmake --build build-hakoniwa --config Release --target hakoniwa-pdu-web-bridge --verbose > bridge-link.log 2>&1
+          status=$?
+          find build-hakoniwa -name link.txt -print -exec sh -c 'echo "--- $1"; cat "$1"' _ {} \; > link-commands.txt 2>&1 || true
+          echo "exit_code=${status}" >> "$GITHUB_OUTPUT"
+          tail -n 120 bridge-link.log
+          exit 0
+
+      - name: Upload Linux link diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-core-link-diagnostics
+          path: |
+            bridge-link.log
+            link-commands.txt
+          if-no-files-found: error
+
+      - name: Fail when link failed
+        if: steps.link.outputs.exit_code != '0'
+        run: exit 1
