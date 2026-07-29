@@ -436,16 +436,211 @@ def test(ctx: BuildContext) -> None:
         raise ConfigError("validation.integration_tcp is reserved for the cross-platform TCP smoke test and is not implemented yet")
 
 
+def _command_output(command: list[str], cwd: Path) -> str:
+    result = subprocess.run(
+        command,
+        cwd=cwd,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    return result.stdout.strip() if result.returncode == 0 else "unknown"
+
+
+def _cmake_cache_value(build_dir: Path, key: str) -> str:
+    cache = build_dir / "CMakeCache.txt"
+    if not cache.is_file():
+        return "unknown"
+    prefix = f"{key}:"
+    for line in cache.read_text(encoding="utf-8", errors="replace").splitlines():
+        if line.startswith(prefix) and "=" in line:
+            return line.split("=", 1)[1] or "unknown"
+    return "unknown"
+
+
+def _read_dependency_receipt(prefix: Path, component_id: str) -> Dict[str, Any]:
+    path = prefix / "share" / "hakoniwa" / "receipts" / f"{component_id}.yaml"
+    if not path.is_file():
+        return {
+            "version": "unknown",
+            "source_revision": "unknown",
+            "build_limits": {},
+        }
+    result: Dict[str, Any] = {"build_limits": {}}
+    section = ""
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        if raw and not raw.startswith(" ") and raw.endswith(":"):
+            section = raw[:-1]
+            continue
+        if not raw.startswith("  ") or raw.startswith("    ") or ":" not in raw:
+            continue
+        key, value = raw.strip().split(":", 1)
+        parsed = _parse_scalar(value)
+        if section == "component" and key in {"version", "source_revision"}:
+            result[key] = parsed
+        elif section == "build_limits":
+            result["build_limits"][key] = parsed
+    if not result.get("version") or not result.get("source_revision"):
+        raise ConfigError(f"incomplete dependency receipt: {path}")
+    return result
+
+
+def _bridge_artifacts(install_dir: Path) -> list[tuple[Path, str]]:
+    artifacts: list[tuple[Path, str]] = []
+    fixed = (
+        (Path("lib/cmake/hakoniwa_pdu_bridge"), "cmake-package"),
+        (
+            Path("share/hakoniwa-pdu-bridge/config/web_bridge_fleets"),
+            "config-format",
+        ),
+    )
+    for relative, kind in fixed:
+        if (install_dir / relative).exists():
+            artifacts.append((relative, kind))
+    for child in ("bin", "lib"):
+        parent = install_dir / child
+        if not parent.is_dir():
+            continue
+        for installed in parent.iterdir():
+            if installed.is_file() and (
+                "hakoniwa-pdu-bridge" in installed.name
+                or (
+                    installed.name.startswith("hakoniwa-pdu-")
+                    and "bridge" in installed.name
+                )
+                or "hakoniwa_pdu_bridge" in installed.name
+                or installed.name == "run-web-bridge.bash"
+            ):
+                kind = "executable" if child == "bin" else "library"
+                artifacts.append((installed.relative_to(install_dir), kind))
+    return sorted(set(artifacts), key=lambda item: item[0].as_posix())
+
+
+def write_receipt(ctx: BuildContext, install_dir: Path) -> Path:
+    receipt_root = install_dir / "share" / "hakoniwa" / "receipts"
+    resolved_relative = (
+        Path("share")
+        / "hakoniwa"
+        / "receipts"
+        / "resolved"
+        / "hakoniwa-pdu-bridge-core.yaml"
+    )
+    (install_dir / resolved_relative).parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(
+        ctx.repo_root / ".hako" / "resolved-build.yaml",
+        install_dir / resolved_relative,
+    )
+
+    artifacts = _bridge_artifacts(install_dir)
+    if not any(kind == "cmake-package" for _, kind in artifacts):
+        raise ConfigError(f"installed Bridge CMake package not found under: {install_dir}")
+
+    dependencies: Dict[str, Dict[str, Any]] = {}
+    if ctx.endpoint_root:
+        dependencies["hakoniwa-pdu-endpoint"] = _read_dependency_receipt(
+            ctx.endpoint_root,
+            "hakoniwa-pdu-endpoint",
+        )
+    if ctx.core_root:
+        dependencies["hakoniwa-core-pro"] = _read_dependency_receipt(
+            ctx.core_root,
+            "hakoniwa-core-pro",
+        )
+    build_limits = (
+        dependencies.get("hakoniwa-core-pro", {}).get("build_limits", {})
+        or dependencies.get("hakoniwa-pdu-endpoint", {}).get("build_limits", {})
+    )
+    compiler = _cmake_cache_value(ctx.build_dir, "CMAKE_CXX_COMPILER")
+    revision = _command_output(["git", "rev-parse", "HEAD"], ctx.repo_root)
+    capabilities = {
+        "library": ctx.cfg["components"]["library"],
+        "standalone_app": ctx.cfg["components"]["standalone_app"],
+        "hakoniwa_app": ctx.cfg["components"]["hakoniwa_app"],
+        "web_bridge": ctx.cfg["components"]["hakoniwa_app"],
+        "monitor": ctx.cfg["components"]["monitor"],
+        "web_bridge_fleets_config_format": True,
+        "cmake_package": True,
+    }
+    lines = [
+        "schema_version: 1",
+        "component:",
+        "  id: hakoniwa-pdu-bridge-core",
+        "  version: 1.0.0",
+        f"  source_revision: {_yaml_scalar(revision)}",
+        "platform:",
+        f"  os: {_yaml_scalar(ctx.platform_name)}",
+        f"  architecture: {_yaml_scalar(ctx.arch)}",
+        f"  toolchain: {_yaml_scalar(compiler)}",
+        "install:",
+        f"  prefix: {_yaml_scalar(install_dir)}",
+        "capabilities:",
+    ]
+    for key, value in capabilities.items():
+        lines.append(f"  {key}: {_yaml_scalar(value)}")
+    if build_limits:
+        lines.append("build_limits:")
+        for key, value in build_limits.items():
+            lines.append(f"  {key}: {_yaml_scalar(value)}")
+    else:
+        lines.append("build_limits: {}")
+    if dependencies:
+        lines.append("dependencies:")
+        for component_id, dependency in dependencies.items():
+            lines.extend(
+                [
+                    f"  {component_id}:",
+                    f"    version: {_yaml_scalar(dependency['version'])}",
+                    f"    source_revision: {_yaml_scalar(dependency['source_revision'])}",
+                ]
+            )
+            dependency_limits = dependency["build_limits"]
+            if dependency_limits:
+                lines.append("    build_limits:")
+                for key, value in dependency_limits.items():
+                    lines.append(f"      {key}: {_yaml_scalar(value)}")
+            else:
+                lines.append("    build_limits: {}")
+    else:
+        lines.append("dependencies: {}")
+    lines.append("artifacts:")
+    for path, kind in artifacts:
+        lines.extend(
+            [
+                f"  - path: {_yaml_scalar(path.as_posix())}",
+                f"    kind: {kind}",
+            ]
+        )
+    lines.append(f"resolved_manifest: {_yaml_scalar(resolved_relative.as_posix())}")
+    receipt_path = receipt_root / "hakoniwa-pdu-bridge-core.yaml"
+    receipt_path.parent.mkdir(parents=True, exist_ok=True)
+    receipt_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return receipt_path
+
+
+def install(ctx: BuildContext, install_dir: Path) -> None:
+    if not (ctx.build_dir / "CMakeCache.txt").is_file():
+        raise ConfigError(
+            f"configured build tree not found: {ctx.build_dir}; run hako.py build first"
+        )
+    command = ["cmake", "--install", str(ctx.build_dir), "--prefix", str(install_dir)]
+    if ctx.platform_name == "windows":
+        command.extend(["--config", ctx.cfg["build"]["type"]])
+    _run(command, cwd=ctx.repo_root)
+    receipt = write_receipt(ctx, install_dir)
+    print(f"Component Receipt: {receipt}")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="OS-independent Hakoniwa PDU Bridge build configurator")
-    parser.add_argument("command", choices=["doctor", "configure", "build", "test"])
-    parser.add_argument("--config", default="hakoniwa-build.yaml", help="build manifest (default: hakoniwa-build.yaml)")
+    parser.add_argument("command", choices=["doctor", "configure", "build", "test", "install"])
+    parser.add_argument("--config", default=None, help="build manifest (default: repository root/hakoniwa-build.yaml)")
+    parser.add_argument("--install-dir", default=None, help="explicit local install prefix (required by install)")
     parser.add_argument("--dry-run", action="store_true", help="resolve and print without running build commands")
     args = parser.parse_args(argv)
 
     repo_root = Path(__file__).resolve().parents[1]
-    manifest = Path(args.config)
-    if not manifest.is_absolute():
+    manifest = repo_root / "hakoniwa-build.yaml" if args.config is None else Path(args.config)
+    if args.config is not None and not manifest.is_absolute():
         manifest = (Path.cwd() / manifest).resolve()
     if not manifest.exists():
         raise ConfigError(f"build manifest not found: {manifest}")
@@ -458,7 +653,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "doctor":
         return 1 if errors else 0
-    if args.command in {"build", "test"} and errors:
+    if args.command in {"build", "test", "install"} and errors:
         raise ConfigError("doctor found blocking prerequisites; fix them before building/testing")
     if args.command == "configure" and not shutil.which("cmake"):
         raise ConfigError("CMake was not found on PATH")
@@ -470,6 +665,13 @@ def main(argv: list[str] | None = None) -> int:
         build(ctx)
     elif args.command == "test":
         test(ctx)
+    elif args.command == "install":
+        if not args.install_dir:
+            raise ConfigError("install requires --install-dir")
+        install_dir = Path(args.install_dir)
+        if not install_dir.is_absolute():
+            install_dir = (Path.cwd() / install_dir).resolve()
+        install(ctx, install_dir)
     return 0
 
 
