@@ -179,12 +179,12 @@ if(HAKO_PDU_BRIDGE_BUILD_HAKONIWA_APP)
 
   add_executable(hakoniwa-pdu-web-bridge src/web_bridge_daemon.cpp)
   target_link_libraries(hakoniwa-pdu-web-bridge PRIVATE hakoniwa_pdu_bridge_core_callback)
+  target_include_directories(hakoniwa-pdu-web-bridge PRIVATE
+    "${HAKO_PDU_BRIDGE_HAKONIWA_CORE_ROOT}/include"
+    "${HAKO_PDU_BRIDGE_HAKONIWA_CORE_ROOT}/include/hakoniwa"
+  )
 
   if(NOT HAKO_USING_ENDPOINT_PACKAGE)
-    target_include_directories(hakoniwa-pdu-web-bridge PRIVATE
-      "${HAKO_PDU_BRIDGE_HAKONIWA_CORE_ROOT}/include"
-      "${HAKO_PDU_BRIDGE_HAKONIWA_CORE_ROOT}/include/hakoniwa"
-    )
     target_link_directories(hakoniwa-pdu-web-bridge PRIVATE
       "${HAKO_PDU_BRIDGE_HAKONIWA_CORE_ROOT}/lib"
     )
