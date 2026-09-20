@@ -139,9 +139,11 @@ void hakoniwa::pdu::bridge::TransferPdu::transfer() {
         return;
     }
 
-    // Write to destination endpoint
+    // Write only the bytes actually received. pdu_size is the configured
+    // receive capacity; variable-length encodings such as CDR may use fewer bytes.
     HakoPduErrorType write_err = dst_endpoint_->send(
-        endpoint_pdu_key_, std::span<const std::byte>(buffer)
+        endpoint_pdu_key_,
+        std::span<const std::byte>(buffer.data(), received_size)
     );
 
     if (write_err != HAKO_PDU_ERR_OK) {
