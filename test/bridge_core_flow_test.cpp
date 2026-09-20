@@ -94,7 +94,8 @@ TEST(BridgeCoreFlowTest, VariableLengthImmediatePolicyFlow) {
         std::make_shared<hakoniwa::pdu::EndpointContainer>("node1", config_path("endpoints.json"));
     ASSERT_EQ(endpoint_container->initialize(), HAKO_PDU_ERR_OK);
 
-    auto time_source = hakoniwa::time_source::create_time_source("real", 1000);
+    std::shared_ptr<hakoniwa::time_source::ITimeSource> time_source =
+        hakoniwa::time_source::create_time_source("real", 1000);
     auto result = hakoniwa::pdu::bridge::build(
         config_path("bridge-core-flow-test.json"), "node1", time_source, endpoint_container);
     ASSERT_TRUE(result.ok()) << result.error_message;
