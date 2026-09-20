@@ -87,6 +87,46 @@ TEST(BridgeCoreFlowTest, ImmediatePolicyFlow) {
     ASSERT_EQ(send_pdu, recv_pdu);
 }
 
+TEST(BridgeCoreFlowTest, VariableLengthImmediatePolicyFlow) {
+    // pdu_size is the configured maximum/capacity. The actual payload may be
+    // shorter, for example when transporting a variable-length CDR string.
+    std::shared_ptr<hakoniwa::pdu::EndpointContainer> endpoint_container =
+        std::make_shared<hakoniwa::pdu::EndpointContainer>("node1", config_path("endpoints.json"));
+    ASSERT_EQ(endpoint_container->initialize(), HAKO_PDU_ERR_OK);
+
+    std::shared_ptr<hakoniwa::time_source::ITimeSource> time_source =
+        hakoniwa::time_source::create_time_source("real", 1000);
+    auto result = hakoniwa::pdu::bridge::build(
+        config_path("bridge-core-flow-test.json"), "node1", time_source, endpoint_container);
+    ASSERT_TRUE(result.ok()) << result.error_message;
+    std::shared_ptr<BridgeCore> bridge_core(std::move(result.core));
+
+    ASSERT_EQ(endpoint_container->start_all(), HAKO_PDU_ERR_OK);
+    bridge_core->start();
+
+    auto src_ep = endpoint_container->ref("n1-epSrc");
+    auto dst_ep = endpoint_container->ref("n1-epDst");
+
+    const hakoniwa::pdu::PduKey key = {"Drone", "pos"};
+    ASSERT_EQ(src_ep->get_pdu_size(key), 72U);
+
+    std::vector<std::byte> send_pdu(13);
+    for (size_t i = 0; i < send_pdu.size(); ++i) {
+        send_pdu[i] = std::byte(0xA0 + i);
+    }
+
+    ASSERT_EQ(src_ep->send(key, send_pdu), HAKO_PDU_ERR_OK);
+    ASSERT_TRUE(bridge_core->cyclic_trigger());
+
+    std::vector<std::byte> recv_pdu(72);
+    size_t received_size = 0;
+    ASSERT_EQ(dst_ep->recv(key, recv_pdu, received_size), HAKO_PDU_ERR_OK);
+    ASSERT_EQ(received_size, send_pdu.size());
+
+    recv_pdu.resize(received_size);
+    ASSERT_EQ(recv_pdu, send_pdu);
+}
+
 TEST(BridgeCoreFlowTest, AtomicPolicyFlow) {
     // 1. Setup
     std::shared_ptr<hakoniwa::pdu::EndpointContainer> endpoint_container = 
