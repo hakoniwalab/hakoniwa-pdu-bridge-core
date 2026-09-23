@@ -104,6 +104,7 @@ private:
     mutable std::mutex state_mtx_;
     std::string last_error_;
     uint64_t started_time_usec_{0};
+    bool started_time_initialized_{false};
     std::unordered_map<std::string, std::vector<std::pair<std::string, std::string>>> connection_transferable_pdus_;
     mutable std::mutex monitor_runtime_mtx_;
     std::shared_ptr<BridgeMonitorRuntime> monitor_runtime_;
