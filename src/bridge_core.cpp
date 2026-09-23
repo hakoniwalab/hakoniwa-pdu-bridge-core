@@ -44,8 +44,13 @@ void BridgeCore::start() {
         // Already running in another thread.
         return;
     }
+    // Do not sample the injected time source here. Callback-backed time
+    // sources may not be safe to query while an owning Hakoniwa asset is
+    // still inside its initialization callback. The first cyclic execution
+    // is the earliest runtime point at which the callback clock is usable.
     std::lock_guard<std::mutex> lock(state_mtx_);
-    started_time_usec_ = time_source_ ? time_source_->get_microseconds() : 0;
+    started_time_usec_ = 0;
+    started_time_initialized_ = false;
     last_error_.clear();
 }
 
@@ -56,6 +61,14 @@ bool BridgeCore::cyclic_trigger() {
         #endif
         // Not running, so do nothing.
         return false;
+    }
+    if (!started_time_initialized_) {
+        const uint64_t now = time_source_ ? time_source_->get_microseconds() : 0;
+        std::lock_guard<std::mutex> lock(state_mtx_);
+        if (!started_time_initialized_) {
+            started_time_usec_ = now;
+            started_time_initialized_ = true;
+        }
     }
     // Trigger recv events for hakoniwa polling shm endpoints
     for (const auto& endpoint_id : endpoint_ids_) {
