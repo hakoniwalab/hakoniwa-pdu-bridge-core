@@ -32,6 +32,41 @@ namespace {
     }
 }
 
+class CountingTimeSource final : public hakoniwa::time_source::ITimeSource {
+public:
+    uint64_t get_microseconds() const override
+    {
+        ++reads;
+        return 1234;
+    }
+
+    void sleep_delta_time() const override {}
+
+    mutable std::atomic<int> reads{0};
+};
+
+TEST(BridgeCoreFlowTest, StartDefersTimeSourceReadUntilCyclicTrigger) {
+    auto endpoint_container =
+        std::make_shared<hakoniwa::pdu::EndpointContainer>(
+            "node1", config_path("endpoints.json"));
+    ASSERT_EQ(endpoint_container->initialize(), HAKO_PDU_ERR_OK);
+
+    auto time_source = std::make_shared<CountingTimeSource>();
+    auto result = hakoniwa::pdu::bridge::build(
+        config_path("bridge-core-flow-test.json"),
+        "node1",
+        time_source,
+        endpoint_container);
+    ASSERT_TRUE(result.ok()) << result.error_message;
+    std::shared_ptr<BridgeCore> bridge_core(std::move(result.core));
+
+    bridge_core->start();
+    EXPECT_EQ(time_source->reads.load(), 0);
+
+    ASSERT_TRUE(bridge_core->cyclic_trigger());
+    EXPECT_EQ(time_source->reads.load(), 1);
+}
+
 TEST(BridgeCoreFlowTest, ImmediatePolicyFlow) {
     // 1. Setup
     std::shared_ptr<hakoniwa::pdu::EndpointContainer> endpoint_container = 
